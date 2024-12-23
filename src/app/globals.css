@@ -1,3 +1,15 @@
 @tailwind base; /* Resets and normalizes browser styles */
 @tailwind components; /* Allows custom reusable classes for components */
 @tailwind utilities; /* Low-level utility classes for quick prototyping */
+
+html {
+  --line-color: #e5e7eb;
+}
+
+html.dark {
+  --line-color: rgba(255, 255, 255, 0.2);
+}
+
+.borderBlack {
+  @apply border border-black/10;
+}
