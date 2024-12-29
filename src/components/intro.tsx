@@ -9,6 +9,7 @@ import { HiDownload } from "react-icons/hi";
 import { FaGithubSquare } from "react-icons/fa";
 import { useSectionInView } from "@/lib/hooks";
 import { useActiveSectionContext } from "@/context/active-section-context";
+import profileImg from "@/assets/profile.png";
 
 export default function Intro() {
   const { ref } = useSectionInView("Home", 0.5);
@@ -31,7 +32,7 @@ export default function Intro() {
             }}
           >
             <Image
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=368&h=368&q=100"
+              src={profileImg}
               alt="Alex portrait"
               width="192"
               height="192"
@@ -62,10 +63,10 @@ export default function Intro() {
         initial={{ opacity: 0, y: 100 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <span className="font-bold">Hello, I&apos;m Alex.</span> I&apos;m an{" "}
+        <span className="font-bold">Hi, I&apos;m Alex.</span> I&apos;m an{" "}
         <span className="font-bold">engineer, pilot,</span> and <span className="font-bold">creator</span> with over{" "}
-        <span className="font-bold">4 years</span> of experience. I enjoy
-        building <span className="italic">robots</span> and putting them in the hands of people.
+        <span className="font-bold">4 years</span> of experience. I love
+        building <span className="italic">robots</span> and putting them in people&apos;s hands.
       </motion.h1>
 
       <motion.div
