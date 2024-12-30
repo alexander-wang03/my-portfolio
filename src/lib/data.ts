@@ -5,6 +5,10 @@ import { LuGraduationCap } from "react-icons/lu";
 import corpcommentImg from "@/assets/corpcomment.png";
 import rmtdevImg from "@/assets/rmtdev.png";
 import wordanalyticsImg from "@/assets/wordanalytics.png";
+import { FaPython, FaAws, FaGitAlt, FaLinux, FaRobot} from "react-icons/fa";
+import { SiCplusplus, SiTensorflow, SiPytorch, SiJenkins, SiNextdotjs, SiTypescript, SiTailwindcss } from "react-icons/si";
+import { DiJavascript } from "react-icons/di";
+import MathworksIcon from "@/components/MathworksIcon";
 
 export const links = [
   {
@@ -78,23 +82,68 @@ export const projectsData = [
 ] as const;
 
 export const skillsData = [
-  "HTML",
-  "CSS",
-  "JavaScript",
-  "TypeScript",
-  "React",
-  "Next.js",
-  "Node.js",
-  "Git",
-  "Tailwind",
-  "Prisma",
-  "MongoDB",
-  "Redux",
-  "GraphQL",
-  "Apollo",
-  "Express",
-  "PostgreSQL",
-  "Python",
-  "Django",
-  "Framer Motion",
+  {
+    name: "Python",
+    icon: FaPython,
+  },
+  {
+    name: "C/C++",
+    icon: SiCplusplus,
+  },
+  {
+    name: "MATLAB",
+    icon: MathworksIcon,
+  },
+  {
+    name: "Simulink",
+    icon: MathworksIcon,
+  },
+  {
+    name: "ROS2",
+    icon: FaRobot,
+  },
+  {
+    name: "Linux",
+    icon: FaLinux,
+  },
+  {
+    name: "AWS",
+    icon: FaAws,
+  },
+  {
+    name: "TensorFlow",
+    icon: SiTensorflow,
+  },
+  {
+    name: "PyTorch",
+    icon: SiPytorch,
+  },
+  {
+    name: "Git",
+    icon: FaGitAlt,
+  },
+  {
+    name: "Jenkins",
+    icon: SiJenkins,
+  },
+  {
+    name: "JavaScript",
+    icon: DiJavascript,
+  },
+  {
+    name: "TypeScript",
+    icon: SiTypescript,
+  },
+  {
+    name: "React",
+    icon: FaReact,
+  },
+  {
+    name: "Next.js",
+    icon: SiNextdotjs,
+  },
+  {
+    name: "Tailwind",
+    icon: SiTailwindcss,
+  },
 ] as const;

@@ -10,12 +10,20 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Enable experimental features
   experimental: {
     serverActions: {
-      bodySizeLimit: "1mb", // Limit the size of the request body
-      allowedOrigins: ["*"], // Allow all origins (adjust this as needed)
+      bodySizeLimit: "1mb",
+      allowedOrigins: ["*"],
     },
+  },
+
+  // Add webpack configuration for SVG
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ['@svgr/webpack'],
+    });
+    return config;
   },
 };
 
