@@ -31,12 +31,13 @@ export default function Project({
       className="group h-full"
     >
       <section className="bg-gray-100 border border-black/5 rounded-lg overflow-hidden relative h-[400px] hover:bg-gray-200 transition dark:text-white dark:bg-white/10 dark:hover:bg-white/20">
-        <div className="h-1/2 overflow-hidden">
+        <div className="h-1/2 relative overflow-hidden">
           <Image
             src={imageUrl}
             alt="Project I worked on"
             quality={95}
-            className="w-full h-full object-cover object-center transition group-hover:scale-105"
+            fill
+            className="absolute top-0 left-0 w-full h-full object-cover object-top transition group-hover:scale-105"
           />
         </div>
         

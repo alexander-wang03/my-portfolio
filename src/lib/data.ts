@@ -2,9 +2,11 @@ import React from "react";
 import { CgWorkAlt } from "react-icons/cg";
 import { FaReact } from "react-icons/fa";
 import { LuGraduationCap } from "react-icons/lu";
-import corpcommentImg from "@/assets/corpcomment.png";
-import rmtdevImg from "@/assets/rmtdev.png";
-import wordanalyticsImg from "@/assets/wordanalytics.png";
+import tarsImg from "@/assets/tars.png";
+import boreaslaneImg from "@/assets/boreaslane.png";
+import autorontoImg from "@/assets/autoronto.jpg";
+import synthboardImg from "@/assets/synthboard.png";
+import packagebotImg from "@/assets/packagebot.jpg";
 import { FaPython, FaAws, FaGitAlt, FaLinux, FaRobot} from "react-icons/fa";
 import { SiCplusplus, SiTensorflow, SiPytorch, SiJenkins, SiNextdotjs, SiTypescript, SiTailwindcss } from "react-icons/si";
 import { DiJavascript } from "react-icons/di";
@@ -67,75 +69,47 @@ export const experiencesData = [
     title: "AI Researcher - Toronto Robotics & AI Lab",
     location: "Toronto, ON",
     description:
-      "Authoring 2 papers on a Bayesian Attention-based 3D lane detection model and the development of BoreasLane, the first 3D winter condition lane dataset. Targeting submission to the International Conference on Computer Vision (ICCV).",
+      "Authoring 2 papers on a Bayesian Attention-based 3D lane detection model and the development of BoreasLane, the first 3D winter condition lane dataset.",
     icon: React.createElement(CgWorkAlt),
     date: "May 2024 - present",
   },
 ] as const;
 
-
-// {
-//   title: "University of Toronto, BASc",
-//   location: "Toronto, ON",
-//   description:
-//     "Enrolled in the Engineering Science program, specializing in Robotics Engineering.",
-//   icon: React.createElement(LuGraduationCap),
-//   date: "2021 - present",
-// },
-// {
-//   title: "Software Engineer Intern - RTX, Pratt & Whitney",
-//   location: "Mississauga, ON",
-//   description:
-//     "Worked on building interal software tools for the Control Systems team.",
-//   icon: React.createElement(CgWorkAlt),
-//   date: "May 2022 - Aug 2022",
-// },// {
-//   title: "Software Engineer Intern - RTX, Pratt & Whitney",
-//   location: "Mississauga, ON",
-//   description:
-//     "Return offer to continue building software tools for the Control Systems team.",
-//   icon: React.createElement(CgWorkAlt),
-//   date: "May 2023 - Aug 2023",
-// },
-
-// {
-//   title: "Software and Controls Intern - General Motors",
-//   location: "Markham, ON",
-//   description:
-//     "Developing software and controls for the GM EV3, an autonomous electric vehicle platform.",
-//   icon: React.createElement(CgWorkAlt),
-//   date: "2024 - present",
-// },
-// {
-//   title: "AI & Robotics Researcher - Toronto Robotics",
-//   location: "Markham, ON",
-//   description:
-//     "Developing software and controls for the GM EV3, an autonomous electric vehicle platform.",
-//   icon: React.createElement(CgWorkAlt),
-//   date: "May 2024 - present",
-// },
-
 export const projectsData = [
   {
-    title: "CorpComment",
+    title: "TARS-AI",
     description:
-      "I worked as a full-stack developer on this startup project for 2 years. Users can give public feedback to companies.",
-    tags: ["React", "Next.js", "MongoDB", "Tailwind", "Prisma"],
-    imageUrl: corpcommentImg,
+      "Co-launched an open-source community with the mission of building the robot TARS from Interstellar.",
+    tags: ["Python", "Raspberry Pi", "Fusion360","Speech Recognition", "LLM", "Text-to-Speech"],
+    imageUrl: tarsImg,
   },
   {
-    title: "rmtDev",
+    title: "BoreasLane: 3D Lane Dataset",
     description:
-      "Job board for remote developer jobs. I was the front-end developer. It has features like filtering, sorting and pagination.",
-    tags: ["React", "TypeScript", "Next.js", "Tailwind", "Redux"],
-    imageUrl: rmtdevImg,
+      "Creating the first publicly available 3D winter condition lane dataset. Targeting submission to the International Conference on Computer Vision (ICCV).",
+    tags: ["Python", "AWS", "OpenStreetMap", "OpenCV"],
+    imageUrl: boreaslaneImg
   },
   {
-    title: "Word Analytics",
+    title: "State Estimation for Autonomous Vehicles",
     description:
-      "A public web app for quick analytics on text. It shows word count, character count and social media post limits.",
-    tags: ["React", "Next.js", "SQL", "Tailwind", "Framer"],
-    imageUrl: wordanalyticsImg,
+      "As Team Lead, I developed C++ multi-sensor fusion algorithms for state estimation and localization.",
+    tags: ["C++", "Python", "ROS2", "Linux", "Google Test"],
+    imageUrl: autorontoImg,
+  },
+  {
+    title: "SynthBoard: Audio Synthesizer",
+    description:
+      "Developed an audio synthesizer with a 4x4 button interface, interactive LEDs, and 8 knobs for real-time audio generation and waveform manipulation.",
+    tags: ["C++", "STM32", "Fusion360", "Circuit Design"],
+    imageUrl: synthboardImg,
+  },
+  {
+    title: "Autonomous Package Delivery Robot",
+    description:
+      "Designed an autonomous package delivery robot using Bayesian Localization and a line-following PID controller.",
+    tags: ["Python", "ROS", "Turtlebot 3 Waffle Pi"],
+    imageUrl: packagebotImg,
   },
 ] as const;
 
