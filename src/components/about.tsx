@@ -15,7 +15,9 @@ export default function About() {
           className="flex-1 max-w-[50rem] text-left"
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{
+            delay: 0.1,
+          }}
         >
           <p className="mb-3">
             Ever since I was young, I&apos;ve been fascinated by robotics and space travel, earning my {" "}
@@ -29,7 +31,7 @@ export default function About() {
                 Interning at <span className="font-medium">General Motors</span>, working on control systems for their electric vehicles 🚙.
               </li>
               <li>
-                Serving as a <span className="font-medium">Team Lead</span> for my university&apos;s 1st place finishing autonomous vehicle team, aUToronto.
+                Serving as a <span className="font-medium">Team Lead</span> for my <span className="underline">1st place finishing</span> autonomous vehicle team, aUToronto 🏆.
               </li>
               <li>
                 Conducting <span className="font-medium">AI research</span> at the Toronto Robotics and AI Lab to bring self-driving cars to Canada ☃️.
@@ -37,13 +39,13 @@ export default function About() {
             </ul>
           <br />
           <p className="mb-3">
-            As a creator, I co-founded <span className="font-medium">TARS-AI</span>, an open-source community dedicated to recreating the robot TARS from <span className="italic">Interstellar</span>. I believe in {" "}
+            As a creator, I co-founded <span className="underline">TARS-AI</span>, an open-source community dedicated to recreating the robot TARS from <span className="italic">Interstellar</span> 🤖. I believe in {" "}
             <span className="font-medium"> the democratization of robotics</span>—there&apos;s a tinkerer inside of everyone.
           </p>
 
           <p>
             <span className="italic">When I&apos;m not building or coding</span>, I enjoy reading about {" "}
-            <span className="font-medium">history and geography</span>, going to the gym, or unwinding with mangas and novels. I&apos;m always excited to learn, create, and contribute to a future where everyone can be a creator.
+            <span className="font-medium">history and geography</span> 🌎, going to the gym 💪, or unwinding with mangas and novels 📖. I&apos;m always excited to learn, create, and contribute to a future where everyone can be a creator.
           </p>
         </motion.div>
 
