@@ -1,15 +1,25 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { links } from "@/lib/data";
 import Link from "next/link";
 import clsx from "clsx";
 import { useActiveSectionContext } from "@/context/active-section-context";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
   const { activeSection, setActiveSection, setTimeOfLastClick } =
     useActiveSectionContext();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const matchingLink = links.find((link) => link.hash === pathname);
+    
+    if (matchingLink) {
+      setActiveSection(matchingLink.name);
+    }
+  }, [pathname, setActiveSection]);
 
   return (
     <header className="z-[999] relative">
