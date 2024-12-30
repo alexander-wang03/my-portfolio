@@ -49,11 +49,27 @@ export const experiencesData = [
   },
   {
     title: "Software Engineer Intern - RTX, Pratt & Whitney",
-    location: "Houston, TX",
+    location: "Mississauga, ON",
     description:
-      "I'm now a full-stack developer working as a freelancer. My stack includes React, Next.js, TypeScript, Tailwind, Prisma and MongoDB. I'm open to full-time opportunities.",
-    icon: React.createElement(FaReact),
-    date: "2021 - present",
+      "Return offer to continue building software tools for the Control Systems team. My stack includes React, JavaScript, and Oracle SQL.",
+    icon: React.createElement(CgWorkAlt),
+    date: "May 2023 - Aug 2023",
+  },
+  {
+    title: "Software and Controls Intern - General Motors",
+    location: "Markham, ON",
+    description:
+      "Developing software and controls for the GM EV3, an autonomous electric vehicle platform.",
+    icon: React.createElement(CgWorkAlt),
+    date: "May 2024 - present",
+  },
+  {
+    title: "AI Researcher - Toronto Robotics & AI Lab",
+    location: "Toronto, ON",
+    description:
+      "Authoring 2 papers on a Bayesian Attention-based 3D lane detection model and the development of BoreasLane, the first 3D winter condition lane dataset. Targeting submission to the International Conference on Computer Vision (ICCV).",
+    icon: React.createElement(CgWorkAlt),
+    date: "May 2024 - present",
   },
 ] as const;
 
