@@ -7,7 +7,7 @@ import boreaslaneImg from "@/assets/boreaslane.png";
 import autorontoImg from "@/assets/autoronto.jpg";
 import synthboardImg from "@/assets/synthboard.png";
 import packagebotImg from "@/assets/packagebot.jpg";
-import { FaPython, FaAws, FaGitAlt, FaLinux, FaRobot} from "react-icons/fa";
+import { FaPython, FaAws, FaGitAlt, FaLinux, FaRobot, FaGithub} from "react-icons/fa";
 import { SiCplusplus, SiTensorflow, SiPytorch, SiJenkins, SiNextdotjs, SiTypescript, SiTailwindcss } from "react-icons/si";
 import { DiJavascript } from "react-icons/di";
 import MathworksIcon from "@/components/MathworksIcon";
@@ -69,9 +69,17 @@ export const experiencesData = [
     title: "AI Researcher - Toronto Robotics & AI Lab",
     location: "Toronto, ON",
     description:
-      "Authoring 2 papers on a Bayesian Attention-based 3D lane detection model and the development of BoreasLane, the first 3D winter condition lane dataset.",
+      "Authoring 2 papers on a Bayesian Attention-based 3D lane detection model and BoreasLane, the first 3D winter condition lane dataset.",
     icon: React.createElement(CgWorkAlt),
     date: "May 2024 - present",
+  },
+  {
+    title: "Co-Founder - TARS-AI",
+    location: "Toronto, ON",
+    description:
+      "Co-launched an open-source community with the mission of building the robot TARS from Interstellar.",
+    icon: React.createElement(FaGithub),
+    date: "Dec 2024 - present",
   },
 ] as const;
 
