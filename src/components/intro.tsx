@@ -31,7 +31,7 @@ export default function Intro() {
             <span className="font-bold">Hi, I&apos;m Alex.</span> I&apos;m an{" "}
             <span className="font-bold">engineer 🔧, pilot 🛩️,</span> and <span className="font-bold">creator</span> with over{" "}
             <span className="font-bold">4 years</span> of experience. I love
-            building robots and getting them in people&apos;s hands.
+            building robots and getting them in people&apos;s hands 🤖.
           </motion.h1>
 
           <motion.div

@@ -34,7 +34,7 @@ export default function About() {
                 Serving as a <span className="font-medium">Team Lead</span> for my <span className="underline">1st place finishing</span> autonomous vehicle team, aUToronto 🏆.
               </li>
               <li>
-                Conducting <span className="font-medium">AI research</span> at the Toronto Robotics and AI Lab to bring self-driving cars to Canada ☃️.
+                Conducting <span className="font-medium">AI research</span> at the Toronto Robotics & AI Lab to bring self-driving cars to Canada ☃️.
               </li>
             </ul>
           <br />

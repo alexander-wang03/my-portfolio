@@ -32,23 +32,23 @@ export const links = [
 
 export const experiencesData = [
   {
-    title: "Graduated bootcamp",
-    location: "Miami, FL",
+    title: "University of Toronto, BASc",
+    location: "Toronto, ON",
     description:
-      "I graduated after 6 months of studying. I immediately found a job as a front-end developer.",
+      "Enrolled in the Engineering Science program, specializing in Robotics Engineering.",
     icon: React.createElement(LuGraduationCap),
-    date: "2019",
+    date: "2021 - present",
   },
   {
-    title: "Front-End Developer",
-    location: "Orlando, FL",
+    title: "Software Engineer Intern - RTX, Pratt & Whitney",
+    location: "Mississauga, ON",
     description:
-      "I worked as a front-end developer for 2 years in 1 job and 1 year in another job. I also upskilled to the full stack.",
+      "Worked on building interal software tools for the Control Systems team.",
     icon: React.createElement(CgWorkAlt),
-    date: "2019 - 2021",
+    date: "May 2022 - Aug 2022",
   },
   {
-    title: "Full-Stack Developer",
+    title: "Software Engineer Intern - RTX, Pratt & Whitney",
     location: "Houston, TX",
     description:
       "I'm now a full-stack developer working as a freelancer. My stack includes React, Next.js, TypeScript, Tailwind, Prisma and MongoDB. I'm open to full-time opportunities.",
@@ -56,6 +56,48 @@ export const experiencesData = [
     date: "2021 - present",
   },
 ] as const;
+
+
+// {
+//   title: "University of Toronto, BASc",
+//   location: "Toronto, ON",
+//   description:
+//     "Enrolled in the Engineering Science program, specializing in Robotics Engineering.",
+//   icon: React.createElement(LuGraduationCap),
+//   date: "2021 - present",
+// },
+// {
+//   title: "Software Engineer Intern - RTX, Pratt & Whitney",
+//   location: "Mississauga, ON",
+//   description:
+//     "Worked on building interal software tools for the Control Systems team.",
+//   icon: React.createElement(CgWorkAlt),
+//   date: "May 2022 - Aug 2022",
+// },// {
+//   title: "Software Engineer Intern - RTX, Pratt & Whitney",
+//   location: "Mississauga, ON",
+//   description:
+//     "Return offer to continue building software tools for the Control Systems team.",
+//   icon: React.createElement(CgWorkAlt),
+//   date: "May 2023 - Aug 2023",
+// },
+
+// {
+//   title: "Software and Controls Intern - General Motors",
+//   location: "Markham, ON",
+//   description:
+//     "Developing software and controls for the GM EV3, an autonomous electric vehicle platform.",
+//   icon: React.createElement(CgWorkAlt),
+//   date: "2024 - present",
+// },
+// {
+//   title: "AI & Robotics Researcher - Toronto Robotics",
+//   location: "Markham, ON",
+//   description:
+//     "Developing software and controls for the GM EV3, an autonomous electric vehicle platform.",
+//   icon: React.createElement(CgWorkAlt),
+//   date: "May 2024 - present",
+// },
 
 export const projectsData = [
   {
