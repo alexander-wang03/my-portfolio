@@ -3,14 +3,14 @@ import { projectsData } from "@/lib/data";
 import Image from "next/image";
 
 type Props = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
   searchParams: { [key: string]: string | string[] | undefined };
 };
 
 export default async function ProjectPage({ params }: Props) {
-  const slug = await params.slug;
+  const { slug } = await params;
   const project = projectsData.find((project) => project.slug === slug);
 
   if (!project) {
