@@ -45,7 +45,7 @@ export const experiencesData = [
     title: "Software Engineer Intern - RTX, Pratt & Whitney",
     location: "Mississauga, ON",
     description:
-      "Worked on building interal software tools for the Control Systems team.",
+      "Worked on building internal software tools for the Control Systems team.",
     icon: React.createElement(CgWorkAlt),
     date: "May 2022 - Aug 2022",
   },

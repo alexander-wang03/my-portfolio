@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { projectsData } from "@/lib/data";
 import Image from "next/image";
 
-export default function ProjectPage({
+export default async function ProjectPage({
   params,
 }: {
   params: { slug: string };
