@@ -66,7 +66,7 @@ export const experiencesData = [
     date: "May 2024 - present",
   },
   {
-    title: "AI Researcher - Toronto Robotics & AI Lab",
+    title: "AI Researcher - Toronto Robotics + AI Lab",
     location: "Toronto, ON",
     description:
       "Authoring 2 papers on a Bayesian Attention-based 3D lane detection model and BoreasLane, the first 3D winter condition lane dataset.",
@@ -90,13 +90,15 @@ export const projectsData = [
       "Co-launched an open-source community with the mission of building the robot TARS from Interstellar.",
     tags: ["Python", "Raspberry Pi", "Fusion360","Speech Recognition", "LLM", "Text-to-Speech"],
     imageUrl: tarsImg,
+    slug: "tars-ai",
   },
   {
     title: "BoreasLane: 3D Lane Dataset",
     description:
       "Creating the first publicly available 3D winter condition lane dataset. Targeting submission to the International Conference on Computer Vision (ICCV).",
     tags: ["Python", "AWS", "OpenStreetMap", "OpenCV"],
-    imageUrl: boreaslaneImg
+    imageUrl: boreaslaneImg,
+    slug: "boreaslane",
   },
   {
     title: "State Estimation for Autonomous Vehicles",
@@ -104,6 +106,7 @@ export const projectsData = [
       "As Team Lead, I developed C++ multi-sensor fusion algorithms for state estimation and localization.",
     tags: ["C++", "Python", "ROS2", "Linux", "Google Test"],
     imageUrl: autorontoImg,
+    slug: "autoronto",
   },
   {
     title: "SynthBoard: Audio Synthesizer",
@@ -111,6 +114,7 @@ export const projectsData = [
       "Developed an audio synthesizer with a 4x4 button interface, interactive LEDs, and 8 knobs for real-time audio generation and waveform manipulation.",
     tags: ["C++", "STM32", "Fusion360", "Circuit Design"],
     imageUrl: synthboardImg,
+    slug: "synthboard",
   },
   {
     title: "Autonomous Package Delivery Robot",
@@ -118,6 +122,7 @@ export const projectsData = [
       "Designed an autonomous package delivery robot using Bayesian Localization and a line-following PID controller.",
     tags: ["Python", "ROS", "Turtlebot 3 Waffle Pi"],
     imageUrl: packagebotImg,
+    slug: "packagebot",
   },
 ] as const;
 
