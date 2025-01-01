@@ -138,7 +138,7 @@ export const projectsData = [
     ],
     links: [
       {
-        title: "GitHub Soon",
+        title: "Coming Soon",
         url: "https://github.com/TRAILab",
         icon: "FaGithub"
       },
