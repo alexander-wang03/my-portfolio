@@ -12,12 +12,16 @@ const iconMap = {
   FaTiktok
 };
 
-export default async function ProjectPage({
-  params,
-}: {
-  params: { slug: string }
-}) {
-  const project = projectsData.find((project) => project.slug === params.slug);
+type Props = {
+  params: Promise<{
+    slug: string;
+  }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function ProjectPage({ params }: Props) {
+  const { slug } = await params;
+  const project = projectsData.find((project) => project.slug === slug);
 
   if (!project) {
     notFound();
