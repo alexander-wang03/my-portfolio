@@ -46,7 +46,7 @@ export default function Project({
           
           <div className="p-4 flex flex-col h-1/2">
             <h3 className="text-2xl font-semibold">{title}</h3>
-            <p className="mt-2 leading-relaxed text-gray-700 dark:text-white/70 line-clamp-3">
+            <p className="mt-2 leading-relaxed text-gray-700 dark:text-white/70 line-clamp-3 hidden sm:block">
               {description}
             </p>
             <ul className="flex flex-wrap mt-auto gap-2">
