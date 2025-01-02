@@ -10,7 +10,7 @@ export default function About() {
   return (
     <section className="mb-28 max-w-[80rem] text-center sm:mb-40 scroll-mt-28">
       <SectionHeading>About me</SectionHeading>
-      <div className="flex items-center justify-between gap-8">
+      <div className="flex flex-col-reverse items-center justify-center gap-8 sm:flex-row sm:justify-between">
         <motion.div
           className="flex-1 max-w-[50rem] text-left"
           initial={{ opacity: 0, y: 100 }}
@@ -49,7 +49,7 @@ export default function About() {
           </p>
         </motion.div>
 
-        <div className="relative flex-shrink-0">
+        <div className="relative">
           <motion.div
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -58,7 +58,7 @@ export default function About() {
               duration: 0.2,
             }}
           >
-            <div className="relative w-80 h-80">
+            <div className="relative w-60 h-60 sm:w-80 sm:h-80">
               <Image
                 src={profile2Img}
                 alt="profile picture"
