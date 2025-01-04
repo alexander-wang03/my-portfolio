@@ -35,33 +35,35 @@ export default function Intro() {
           </motion.h1>
 
           <motion.div
-            className="flex flex-col items-center justify-center gap-2 px-4 text-lg font-medium"
+            className="flex flex-col items-center justify-center gap-2 px-4 text-lg font-medium sm:flex-row sm:gap-4"
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               delay: 0.1,
             }}
           >
-            <Link
-              href="#contact"
-              className="group bg-gray-900 text-white px-7 py-3 flex items-center gap-2 rounded-full outline-none focus:scale-110 hover:scale-110 hover:bg-gray-950 active:scale-105 transition w-full sm:w-auto"
-              onClick={() => {
-                setActiveSection("Contact");
-                setTimeOfLastClick(Date.now());
-              }}
-            >
-              Contact me here{" "}
-              <BsArrowRight className="opacity-70 group-hover:translate-x-1 transition" />
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Link
+                href="#contact"
+                className="group bg-gray-900 text-white px-7 py-3 flex items-center gap-2 rounded-full outline-none focus:scale-110 hover:scale-110 hover:bg-gray-950 active:scale-105 transition w-full sm:w-auto"
+                onClick={() => {
+                  setActiveSection("Contact");
+                  setTimeOfLastClick(Date.now());
+                }}
+              >
+                Contact me here{" "}
+                <BsArrowRight className="opacity-70 group-hover:translate-x-1 transition" />
+              </Link>
 
-            <a
-              className="group bg-white px-7 py-3 flex items-center gap-2 rounded-full outline-none focus:scale-110 hover:scale-110 active:scale-105 transition cursor-pointer borderBlack dark:bg-white/10 w-full sm:w-auto"
-              href="/CV.pdf"
-              download
-            >
-              Download CV{" "}
-              <HiDownload className="opacity-60 group-hover:translate-y-1 transition" />
-            </a>
+              <a
+                className="group bg-white px-7 py-3 flex items-center gap-2 rounded-full outline-none focus:scale-110 hover:scale-110 active:scale-105 transition cursor-pointer borderBlack dark:bg-white/10 w-full sm:w-auto"
+                href="/CV.pdf"
+                download
+              >
+                Download CV{" "}
+                <HiDownload className="opacity-60 group-hover:translate-y-1 transition" />
+              </a>
+            </div>
 
             <div className="flex flex-row gap-2">
               <a
