@@ -28,10 +28,10 @@ export default function About() {
           <p className="mb-3">I&apos;m currently:</p>
             <ul className="list-disc list-inside">
               <li>
-                Interning at <span className="font-medium">General Motors</span>, working on control systems for their electric vehicles 🚙.
+                Interning at <span className="font-medium">SpaceX</span>, working on simulation software for Starlink 🛰️.
               </li>
               <li>
-                Serving as a <span className="font-medium">Team Lead</span> for my <span className="underline">1st place finishing</span> autonomous vehicle team, aUToronto 🏆.
+                Serving as a <span className="font-medium">Team Lead</span> for my autonomous vehicle team, aUToronto 🏆.
               </li>
               <li>
                 Conducting <span className="font-medium">AI research</span> at the Toronto Robotics + AI Lab to bring self-driving cars to Canada ☃️.
@@ -40,7 +40,7 @@ export default function About() {
           <br />
           <p className="mb-3">
             As a creator, I co-founded <span className="underline">TARS-AI</span>, an open-source community dedicated to recreating the robot TARS from <span className="italic">Interstellar</span> 🤖. I believe in {" "}
-            <span className="font-medium"> the democratization of robotics</span>—there&apos;s a tinkerer inside of everyone.
+            <span className="font-medium"> the democratization of robotics</span> (there&apos;s a tinkerer inside of everyone).
           </p>
 
           <p>

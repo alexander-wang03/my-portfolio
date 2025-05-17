@@ -61,9 +61,9 @@ export const experiencesData = [
     title: "Software and Controls Intern - General Motors",
     location: "Markham, ON",
     description:
-      "Developing software and controls for the GM EV3, an autonomous electric vehicle platform.",
+      "Developed software and controls for the GM EV3, an autonomous electric vehicle platform.",
     icon: React.createElement(CgWorkAlt),
-    date: "May 2024 - present",
+    date: "May 2024 - Apr 2025",
   },
   {
     title: "AI Researcher - Toronto Robotics + AI Lab",
@@ -80,6 +80,14 @@ export const experiencesData = [
       "Co-launched an open-source community with the mission of building the robot TARS from Interstellar.",
     icon: React.createElement(FaGithub),
     date: "Dec 2024 - present",
+  },
+  {
+    title: "Software Engineer Intern - SpaceX",
+    location: "Redmond, WA",
+    description:
+      "Developing simulation software for the next generation of Starlink v3 satellites.",
+    icon: React.createElement(CgWorkAlt),
+    date: "May 2025 - present",
   },
 ] as const;
 
@@ -133,8 +141,8 @@ export const projectsData = [
     longDescription: [
       "BoreasLane is an initiative under the Toronto Robotics + AI Lab to create the first publicly available 3D lane dataset tailored for winter conditions. This project is part of WinTOR, a collaborative research program focused on advancing self-driving car technology in Canadian winters.",
       "My contributions involved developing a high-performance pipeline for annotating the dataset by integrating sensor data from cameras, GPS, and LiDAR point clouds. Using techniques like caching, multiprocessing, and vectorized operations, I reduced preprocessing and labeling runtimes by 43%, enabling faster iterations and scalability.",
-      "The 3D lane labeling pipeline combines 2D lane annotations from satellite imagery with sensor data collected during vehicle drives. Lane markings are projected into the vehicle’s frame of reference and refined using LiDAR point clouds for high-accuracy 3D annotations. These annotations are exported in the OpenLane format to support model benchmarking.",
-      "Future work involves automating the entire data generation process, starting with unlabelled satellite imagery and leveraging HD maps for a 2D Bird’s Eye View Lane Detection Module. The ultimate goal is to publish the BoreasLane dataset alongside a research paper and to develop a Bayesian Attention Network-based 3D lane detection model, enabling uncertainty-aware segmentation for adverse weather conditions."
+      "The 3D lane labeling pipeline combines 2D lane annotations from satellite imagery with sensor data collected during vehicle drives. Lane markings are projected into the vehicle's frame of reference and refined using LiDAR point clouds for high-accuracy 3D annotations. These annotations are exported in the OpenLane format to support model benchmarking.",
+      "Future work involves automating the entire data generation process, starting with unlabelled satellite imagery and leveraging HD maps for a 2D Bird's Eye View Lane Detection Module. The ultimate goal is to publish the BoreasLane dataset alongside a research paper and to develop a Bayesian Attention Network-based 3D lane detection model, enabling uncertainty-aware segmentation for adverse weather conditions."
     ],
     links: [
       {
