@@ -1,0 +1,251 @@
+import * as THREE from 'three'
+import LunarSurface from './Materials/LunarSurface'
+
+export interface TerrainOptions {
+    size: number
+    segments: number
+    heightScale: number
+    sunDirection?: THREE.Vector3
+}
+
+export default class Terrain {
+    container: THREE.Object3D
+    mesh!: THREE.Mesh
+    heightData: Float32Array
+    size: number
+    segments: number
+    heightScale: number
+    heightMap!: THREE.DataTexture
+
+    constructor(options: TerrainOptions) {
+        this.container = new THREE.Object3D()
+        this.size = options.size
+        this.segments = options.segments
+        this.heightScale = options.heightScale
+        this.heightData = new Float32Array((this.segments + 1) * (this.segments + 1))
+
+        this.generateHeightmap()
+        this.createMesh(options.sunDirection)
+    }
+
+    private generateHeightmap(): void {
+        const res = this.segments + 1
+
+        let minH = Infinity
+        let maxH = -Infinity
+
+        // First pass: generate raw heights
+        const rawHeights = new Float32Array(res * res)
+
+        for (let j = 0; j < res; j++) {
+            for (let i = 0; i < res; i++) {
+                const x = i / res
+                const y = j / res
+
+                let height = 0
+
+                // Large rolling hills (broad undulation)
+                height += this.noise(x * 2.5, y * 2.5) * 0.5
+                height += this.noise(x * 5 + 5.3, y * 5 + 2.7) * 0.3
+
+                // Medium terrain features
+                height += this.noise(x * 10 + 1.7, y * 10 + 8.3) * 0.15
+                height += this.noise(x * 20 + 3.1, y * 20 + 6.9) * 0.08
+
+                // Fine surface roughness
+                height += this.noise(x * 40 + 7.2, y * 40 + 4.1) * 0.04
+                height += this.noise(x * 80 + 2.9, y * 80 + 9.5) * 0.02
+
+                // Large craters (prominent features)
+                height += this.crater(x, y, 0.25, 0.30, 0.10, 0.15)
+                height += this.crater(x, y, 0.60, 0.70, 0.14, 0.20)
+                height += this.crater(x, y, 0.75, 0.25, 0.11, 0.16)
+                height += this.crater(x, y, 0.15, 0.75, 0.09, 0.12)
+                height += this.crater(x, y, 0.35, 0.85, 0.12, 0.18)
+
+                // Medium craters
+                height += this.crater(x, y, 0.40, 0.55, 0.06, 0.08)
+                height += this.crater(x, y, 0.85, 0.50, 0.05, 0.07)
+                height += this.crater(x, y, 0.50, 0.15, 0.05, 0.06)
+                height += this.crater(x, y, 0.20, 0.50, 0.04, 0.05)
+                height += this.crater(x, y, 0.70, 0.45, 0.045, 0.06)
+                height += this.crater(x, y, 0.55, 0.40, 0.035, 0.04)
+
+                // Small craters scattered (kept away from center spawn zone)
+                for (let c = 0; c < 25; c++) {
+                    const cx = this.hash(c * 2) * 0.85 + 0.075
+                    const cy = this.hash(c * 2 + 1) * 0.85 + 0.075
+                    const craterDistFromCenter = Math.sqrt((cx - 0.5) ** 2 + (cy - 0.5) ** 2)
+                    if (craterDistFromCenter < 0.15) continue
+                    const cr = 0.012 + this.hash(c * 2 + 50) * 0.03
+                    const cd = cr * 1.2
+                    height += this.crater(x, y, cx, cy, cr, cd)
+                }
+
+                // Flatten center area for rover starting zone (smooth Gaussian)
+                const distFromCenter = Math.sqrt((x - 0.5) ** 2 + (y - 0.5) ** 2)
+                const flattenFactor = Math.exp(-(distFromCenter * distFromCenter) / (2 * 0.05 * 0.05))
+                height = height * (1 - flattenFactor * 0.8)
+
+                rawHeights[j * res + i] = height
+
+                if (height < minH) minH = height
+                if (height > maxH) maxH = height
+            }
+        }
+
+        // Second pass: normalize to 0-1 using actual range
+        const range = maxH - minH || 1
+        for (let i = 0; i < rawHeights.length; i++) {
+            this.heightData[i] = (rawHeights[i] - minH) / range
+        }
+
+        // Third pass: light smooth at center to remove spike artifact only
+        const centerI = Math.floor(res / 2)
+        const centerJ = Math.floor(res / 2)
+        const smoothRadius = Math.floor(res * 0.03)
+        const smoothed = new Float32Array(this.heightData)
+        for (let j = centerJ - smoothRadius; j <= centerJ + smoothRadius; j++) {
+            for (let i = centerI - smoothRadius; i <= centerI + smoothRadius; i++) {
+                if (i < 1 || i >= res - 1 || j < 1 || j >= res - 1) continue
+                const di = i - centerI
+                const dj = j - centerJ
+                const dist = Math.sqrt(di * di + dj * dj) / smoothRadius
+                if (dist > 1) continue
+
+                // 3x3 average
+                let sum = 0
+                let count = 0
+                for (let ddy = -1; ddy <= 1; ddy++) {
+                    for (let ddx = -1; ddx <= 1; ddx++) {
+                        sum += this.heightData[(j + ddy) * res + (i + ddx)]
+                        count++
+                    }
+                }
+                const avg = sum / count
+                // Light blend: only 50% at dead center, tapering to 0
+                const blend = (1 - dist) * 0.5
+                smoothed[j * res + i] = this.heightData[j * res + i] * (1 - blend) + avg * blend
+            }
+        }
+        this.heightData.set(smoothed)
+
+        // Create DataTexture from heightmap
+        const textureData = new Uint8Array(res * res)
+        for (let i = 0; i < this.heightData.length; i++) {
+            textureData[i] = Math.floor(this.heightData[i] * 255)
+        }
+
+        this.heightMap = new THREE.DataTexture(
+            textureData,
+            res,
+            res,
+            THREE.RedFormat,
+        )
+        this.heightMap.magFilter = THREE.LinearFilter
+        this.heightMap.minFilter = THREE.LinearFilter
+        this.heightMap.needsUpdate = true
+    }
+
+    private createMesh(sunDirection?: THREE.Vector3): void {
+        const geometry = new THREE.PlaneGeometry(
+            this.size,
+            this.size,
+            this.segments,
+            this.segments,
+        )
+
+        // Rotate plane to be horizontal (XZ plane, Y-up)
+        geometry.rotateX(-Math.PI / 2)
+
+        const lunarSurface = new LunarSurface({
+            heightMap: this.heightMap,
+            terrainSize: this.size,
+            heightScale: this.heightScale,
+            sunDirection,
+        })
+
+        this.mesh = new THREE.Mesh(geometry, lunarSurface.material)
+        this.container.add(this.mesh)
+    }
+
+    // Value noise with full 0-1 range
+    private noise(x: number, y: number): number {
+        const ix = Math.floor(x)
+        const iy = Math.floor(y)
+        const fx = x - ix
+        const fy = y - iy
+
+        // Quintic interpolation (smoother than cubic)
+        const ux = fx * fx * fx * (fx * (fx * 6 - 15) + 10)
+        const uy = fy * fy * fy * (fy * (fy * 6 - 15) + 10)
+
+        const a = this.hash2d(ix, iy)
+        const b = this.hash2d(ix + 1, iy)
+        const c = this.hash2d(ix, iy + 1)
+        const d = this.hash2d(ix + 1, iy + 1)
+
+        return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy
+    }
+
+    // Full 0-1 range hash (offset inputs to avoid sin(0)=0 degeneracy)
+    private hash2d(x: number, y: number): number {
+        const n = Math.sin((x + 0.5) * 127.1 + (y + 0.7) * 311.7) * 43758.5453
+        return n - Math.floor(n)
+    }
+
+    private hash(n: number): number {
+        const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
+        return x - Math.floor(x)
+    }
+
+    // Crater: circular depression with raised rim
+    private crater(
+        x: number,
+        y: number,
+        cx: number,
+        cy: number,
+        radius: number,
+        depth: number,
+    ): number {
+        const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+        const normalizedDist = dist / radius
+
+        if (normalizedDist > 2.5) return 0
+
+        // Inner bowl (smooth parabolic depression)
+        if (normalizedDist < 1.0) {
+            const bowl = normalizedDist * normalizedDist
+            return -depth * (1 - bowl)
+        }
+
+        // Outer rim (raised edge with gradual falloff)
+        const rimDist = normalizedDist - 1.0
+        const rim = Math.exp(-rimDist * rimDist * 5)
+        return depth * 0.35 * rim
+    }
+
+    /** Get height at a world XZ coordinate (for placing objects later) */
+    getHeightAt(worldX: number, worldZ: number): number {
+        const u = (worldX / this.size) + 0.5
+        const v = (worldZ / this.size) + 0.5
+
+        if (u < 0 || u > 1 || v < 0 || v > 1) return 0
+
+        const res = this.segments + 1
+        const ix = Math.min(Math.floor(u * (res - 1)), res - 2)
+        const iy = Math.min(Math.floor(v * (res - 1)), res - 2)
+        const fx = u * (res - 1) - ix
+        const fy = v * (res - 1) - iy
+
+        const h00 = this.heightData[iy * res + ix]
+        const h10 = this.heightData[iy * res + ix + 1]
+        const h01 = this.heightData[(iy + 1) * res + ix]
+        const h11 = this.heightData[(iy + 1) * res + ix + 1]
+
+        const h = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy) +
+                  h01 * (1 - fx) * fy + h11 * fx * fy
+
+        return h * this.heightScale
+    }
+}

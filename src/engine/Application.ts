@@ -4,6 +4,7 @@ import Sizes from './Utils/Sizes'
 import Time from './Utils/Time'
 import Resources from './Resources'
 import Camera from './Camera'
+import World from '../world/World'
 
 export interface ApplicationOptions {
     canvas: HTMLCanvasElement
@@ -19,6 +20,7 @@ export default class Application {
     scene!: THREE.Scene
     renderer!: THREE.WebGLRenderer
     camera!: Camera
+    world!: World
 
     constructor(options: ApplicationOptions) {
         this.canvas = options.canvas
@@ -31,7 +33,7 @@ export default class Application {
         this.setDebug()
         this.setRenderer()
         this.setCamera()
-        this.setTestCube()
+        this.setWorld()
         this.setRenderLoop()
     }
 
@@ -85,20 +87,18 @@ export default class Application {
         this.scene.add(this.camera.container)
     }
 
-    private setTestCube(): void {
-        const geometry = new THREE.BoxGeometry(1, 1, 1)
-        const material = new THREE.MeshNormalMaterial()
-        const cube = new THREE.Mesh(geometry, material)
-        cube.position.set(0, 0.5, 0)
-        this.scene.add(cube)
-
-        // Ground grid for reference
-        const grid = new THREE.GridHelper(20, 20, 0x444444, 0x222222)
-        this.scene.add(grid)
-
-        // Ambient light so we can see things
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
-        this.scene.add(ambientLight)
+    private setWorld(): void {
+        this.world = new World({
+            config: this.config,
+            debug: this.debug,
+            resources: this.resources,
+            time: this.time,
+            sizes: this.sizes,
+            camera: this.camera,
+            scene: this.scene,
+            renderer: this.renderer,
+        })
+        this.scene.add(this.world.container)
     }
 
     private setRenderLoop(): void {
