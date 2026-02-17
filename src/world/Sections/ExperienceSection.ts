@@ -138,11 +138,8 @@ export default class ExperienceSection {
             const signGroup = new THREE.Group()
             signGroup.add(pillar, board)
 
-            options.objects.add({
-                mesh: signGroup,
-                position: new THREE.Vector3(px, terrainY + pillarHeight / 2, pz),
-                mass: 0,
-            })
+            signGroup.position.set(px, terrainY + pillarHeight / 2, pz)
+            this.container.add(signGroup)
         }
     }
 

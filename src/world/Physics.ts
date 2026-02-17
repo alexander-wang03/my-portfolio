@@ -225,6 +225,7 @@ export default class Physics {
             this.debugContainer.add(wheelMesh)
             this.wheelDebugMeshes.push(wheelMesh)
         }
+
     }
 
     private setTick(): void {
@@ -359,6 +360,7 @@ export default class Physics {
                     )
                     this.wheelDebugMeshes[i].quaternion.multiply(spinQuat)
                 }
+
             }
         })
     }

@@ -179,6 +179,7 @@ export default class Rocks {
                     (rand() - 0.5) * 0.2,
                 ),
                 mass: 0,
+                useConvexHull: true,
             })
         }
 
@@ -201,27 +202,17 @@ export default class Rocks {
 
             const terrainY = options.terrain.getHeightAt(rx, rz)
 
-            // Visual only (no physics) for smaller medium rocks to save performance
-            if (scale < 0.6) {
-                mesh.position.set(rx, terrainY + scale * 0.25, rz)
-                mesh.rotation.set(
+            options.objects.add({
+                mesh,
+                position: new THREE.Vector3(rx, terrainY + scale * 0.25, rz),
+                rotation: new THREE.Euler(
                     (rand() - 0.5) * 0.4,
                     rand() * Math.PI * 2,
                     (rand() - 0.5) * 0.3,
-                )
-                this.container.add(mesh)
-            } else {
-                options.objects.add({
-                    mesh,
-                    position: new THREE.Vector3(rx, terrainY + scale * 0.25, rz),
-                    rotation: new THREE.Euler(
-                        (rand() - 0.5) * 0.4,
-                        rand() * Math.PI * 2,
-                        (rand() - 0.5) * 0.3,
-                    ),
-                    mass: 0,
-                })
-            }
+                ),
+                mass: 0,
+                useConvexHull: true,
+            })
         }
 
         // --- Small pebbles (detail 0 icosahedron, no physics) ---
@@ -275,6 +266,7 @@ export default class Rocks {
                     (rand() - 0.5) * 0.1,
                 ),
                 mass: 0,
+                useConvexHull: true,
             })
         }
 
@@ -305,6 +297,7 @@ export default class Rocks {
                     (rand() - 0.5) * 0.15,
                 ),
                 mass: 0,
+                useConvexHull: true,
             })
         }
 
@@ -333,13 +326,17 @@ export default class Rocks {
                 const rz = cz + Math.sin(offsetAngle) * offsetDist
                 const terrainY = options.terrain.getHeightAt(rx, rz)
 
-                mesh.position.set(rx, terrainY + scale * 0.25, rz)
-                mesh.rotation.set(
-                    (rand() - 0.5) * 0.5,
-                    rand() * Math.PI * 2,
-                    (rand() - 0.5) * 0.4,
-                )
-                this.container.add(mesh)
+                options.objects.add({
+                    mesh,
+                    position: new THREE.Vector3(rx, terrainY + scale * 0.25, rz),
+                    rotation: new THREE.Euler(
+                        (rand() - 0.5) * 0.5,
+                        rand() * Math.PI * 2,
+                        (rand() - 0.5) * 0.4,
+                    ),
+                    mass: 0,
+                    useConvexHull: true,
+                })
             }
         }
     }

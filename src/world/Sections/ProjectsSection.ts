@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import type Objects from '../Objects'
 import type Zones from '../Zones'
 import type Areas from '../Areas'
 import type Terrain from '../Terrain'
@@ -14,7 +13,6 @@ interface Project {
 }
 
 export interface ProjectsSectionOptions {
-    objects: Objects
     zones: Zones
     areas: Areas
     terrain: Terrain
@@ -133,13 +131,8 @@ export default class ProjectsSection {
             const signGroup = new THREE.Group()
             signGroup.add(pillar, board)
 
-            const signY = terrainY + pillarHeight / 2
-
-            options.objects.add({
-                mesh: signGroup,
-                position: new THREE.Vector3(px, signY, pz),
-                mass: 0,
-            })
+            signGroup.position.set(px, terrainY + pillarHeight / 2, pz)
+            this.container.add(signGroup)
         }
     }
 

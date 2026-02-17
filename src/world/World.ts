@@ -210,7 +210,6 @@ export default class World {
 
         // Projects section — east
         const projects = new ProjectsSection({
-            objects: this.objects,
             zones: this.zones,
             areas: this.areas,
             terrain: this.terrain,
@@ -248,7 +247,6 @@ export default class World {
 
         // Contact section — north (past intro sign)
         const contact = new ContactSection({
-            objects: this.objects,
             zones: this.zones,
             areas: this.areas,
             terrain: this.terrain,

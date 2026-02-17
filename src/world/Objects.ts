@@ -10,6 +10,7 @@ export interface ObjectAddOptions {
     mass: number
     colliderDesc?: RAPIER.ColliderDesc
     restitution?: number
+    useConvexHull?: boolean
 }
 
 export interface PhysicsObject {
@@ -66,12 +67,22 @@ export default class Objects {
 
         const body = this.physics.world.createRigidBody(bodyDesc)
 
-        // Create collider (auto-generate box from mesh bounding box if not provided)
+        // Create collider
         let colliderDesc = options.colliderDesc
         if (!colliderDesc) {
-            const box = new THREE.Box3().setFromObject(mesh)
-            const size = box.getSize(new THREE.Vector3())
-            colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
+            if (options.useConvexHull && mesh instanceof THREE.Mesh && mesh.geometry) {
+                // Convex hull from geometry vertices — fits organic shapes much better
+                const points = new Float32Array(mesh.geometry.attributes.position.array)
+                const hull = RAPIER.ColliderDesc.convexHull(points)
+                colliderDesc = hull ?? this.cuboidFromGeometry(mesh)
+            } else if (mesh instanceof THREE.Mesh && mesh.geometry) {
+                // Cuboid from geometry bounds (ignores mesh rotation, avoids inflated AABB)
+                colliderDesc = this.cuboidFromGeometry(mesh)
+            } else {
+                const box = new THREE.Box3().setFromObject(mesh)
+                const size = box.getSize(new THREE.Vector3())
+                colliderDesc = RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
+            }
         }
 
         if (options.mass > 0) colliderDesc.setMass(options.mass)
@@ -82,5 +93,11 @@ export default class Objects {
         const item: PhysicsObject = { mesh, body }
         this.items.push(item)
         return item
+    }
+
+    private cuboidFromGeometry(mesh: THREE.Mesh): RAPIER.ColliderDesc {
+        mesh.geometry.computeBoundingBox()
+        const size = mesh.geometry.boundingBox!.getSize(new THREE.Vector3())
+        return RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
     }
 }

@@ -93,12 +93,8 @@ export default class IntroSection {
 
         const signY = terrainY + pillarHeight + boardHeight / 2
 
-        // Add as static object with collision
-        options.objects.add({
-            mesh: signGroup,
-            position: new THREE.Vector3(signX, signY, signZ),
-            mass: 0,
-        })
+        signGroup.position.set(signX, signY, signZ)
+        this.container.add(signGroup)
     }
 
     private createPushableBlocks(options: IntroSectionOptions): void {
