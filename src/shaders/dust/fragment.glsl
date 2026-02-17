@@ -7,6 +7,6 @@ void main() {
 
     float alpha = vAlpha * smoothstep(0.5, 0.2, dist);
 
-    // Reddish Mars dust color
-    gl_FragColor = vec4(0.75, 0.50, 0.30, alpha);
+    // Warm orange dust (folio-2019 palette)
+    gl_FragColor = vec4(0.92, 0.60, 0.30, alpha);
 }

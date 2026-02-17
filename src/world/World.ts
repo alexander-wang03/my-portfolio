@@ -55,24 +55,23 @@ export default class World {
     }
 
     async init(onProgress?: (value: number) => void): Promise<void> {
-        await this.setTerrain()
+        this.setTerrain()
         onProgress?.(0.4)
         this.setEnvironment()
         this.setControls()
         this.setPhysics()
         onProgress?.(0.7)
-        await this.setRover()
+        this.setRover()
         this.setDust()
         onProgress?.(1.0)
     }
 
-    private async setTerrain(): Promise<void> {
-        this.terrain = await Terrain.fromSTL(
-            '/models/terrain/curiosity-landing-site.stl',
-            200,
-            256,
-            new THREE.Vector3(0.5, 0.7, 0.3).normalize(),
-        )
+    private setTerrain(): void {
+        this.terrain = new Terrain({
+            size: 200,
+            segments: 16,
+            heightScale: 12,
+        })
         this.container.add(this.terrain.container)
     }
 
@@ -106,13 +105,12 @@ export default class World {
         })
     }
 
-    private async setRover(): Promise<void> {
+    private setRover(): void {
         this.rover = new Rover({
             time: this.time,
             physics: this.physics,
             terrain: this.terrain,
         })
-        await this.rover.load()
         this.container.add(this.rover.container)
     }
 
