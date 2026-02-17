@@ -10,6 +10,12 @@ import Controls from './Controls'
 import Physics from './Physics'
 import Rover from './Rover'
 import DustParticles from './Particles/DustParticles'
+import Zones from './Zones'
+import Areas from './Areas'
+import Objects from './Objects'
+import IntroSection from './Sections/IntroSection'
+import ProjectsSection from './Sections/ProjectsSection'
+import SectionOverlay from '../ui/SectionOverlay'
 
 export interface WorldOptions {
     config: { debug: boolean; touch: boolean }
@@ -39,6 +45,10 @@ export default class World {
     physics!: Physics
     rover!: Rover
     dust!: DustParticles
+    zones!: Zones
+    areas!: Areas
+    objects!: Objects
+    overlay!: SectionOverlay
 
     constructor(options: WorldOptions) {
         this.config = options.config
@@ -56,11 +66,17 @@ export default class World {
 
     async init(onProgress?: (value: number) => void): Promise<void> {
         this.setTerrain()
-        onProgress?.(0.4)
+        onProgress?.(0.3)
         this.setEnvironment()
         this.setControls()
         this.setPhysics()
-        onProgress?.(0.7)
+        onProgress?.(0.5)
+        this.setZones()
+        this.setAreas()
+        this.setObjects()
+        this.setOverlay()
+        this.setSections()
+        onProgress?.(0.8)
         this.setRover()
         this.setDust()
         onProgress?.(1.0)
@@ -96,13 +112,66 @@ export default class World {
             config: this.config,
         })
 
-        // Add debug wireframes to scene (only visible in debug mode)
         this.container.add(this.physics.debugContainer)
 
-        // Camera follows the rover chassis
         this.time.on('tick', () => {
             this.camera.target.copy(this.physics.chassisPosition)
         })
+    }
+
+    private setZones(): void {
+        this.zones = new Zones({
+            time: this.time,
+            physics: this.physics,
+            config: this.config,
+        })
+        this.container.add(this.zones.container)
+    }
+
+    private setAreas(): void {
+        this.areas = new Areas({
+            time: this.time,
+            physics: this.physics,
+            camera: this.camera,
+            renderer: this.renderer,
+        })
+        this.container.add(this.areas.container)
+    }
+
+    private setObjects(): void {
+        this.objects = new Objects({
+            time: this.time,
+            physics: this.physics,
+        })
+        this.container.add(this.objects.container)
+    }
+
+    private setOverlay(): void {
+        this.overlay = new SectionOverlay()
+    }
+
+    private setSections(): void {
+        // Intro section — near spawn
+        const intro = new IntroSection({
+            objects: this.objects,
+            terrain: this.terrain,
+            x: 0,
+            z: 0,
+        })
+        this.container.add(intro.container)
+
+        // Projects section — offset to the side
+        const projects = new ProjectsSection({
+            objects: this.objects,
+            zones: this.zones,
+            areas: this.areas,
+            terrain: this.terrain,
+            camera: this.camera,
+            overlay: this.overlay,
+            x: 25,
+            z: 0,
+        })
+        this.container.add(projects.container)
     }
 
     private setRover(): void {
