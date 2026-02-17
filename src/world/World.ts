@@ -54,13 +54,16 @@ export default class World {
         this.container.matrixAutoUpdate = false
     }
 
-    async init(): Promise<void> {
+    async init(onProgress?: (value: number) => void): Promise<void> {
         await this.setTerrain()
+        onProgress?.(0.4)
         this.setEnvironment()
         this.setControls()
         this.setPhysics()
+        onProgress?.(0.7)
         await this.setRover()
         this.setDust()
+        onProgress?.(1.0)
     }
 
     private async setTerrain(): Promise<void> {

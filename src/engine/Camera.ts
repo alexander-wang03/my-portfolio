@@ -295,4 +295,18 @@ export default class Camera {
             this.debugFolder.add(this.orbitControls, 'enabled').name('orbitControlsEnabled')
         }
     }
+
+    reveal(duration = 3): void {
+        // Start camera zoomed far out, animate to default
+        this.zoom.value = 1.0
+        this.zoom.targetValue = 1.0
+        this.zoom.distance = this.zoom.minDistance + this.zoom.amplitude
+
+        gsap.to(this.zoom, {
+            value: 0.5,
+            targetValue: 0.5,
+            duration,
+            ease: 'power2.out',
+        })
+    }
 }
