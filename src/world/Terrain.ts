@@ -158,6 +158,19 @@ export default class Terrain {
         // Rotate plane to be horizontal (XZ plane, Y-up)
         geometry.rotateX(-Math.PI / 2)
 
+        // Bake heights directly into geometry vertex positions.
+        // This guarantees the visual mesh exactly matches the physics heightfield,
+        // since both read from the same Float32Array via getHeightAt().
+        const posAttr = geometry.attributes.position
+        for (let k = 0; k < posAttr.count; k++) {
+            const x = posAttr.getX(k)
+            const z = posAttr.getZ(k)
+            posAttr.setY(k, this.getHeightAt(x, z))
+        }
+        posAttr.needsUpdate = true
+        geometry.computeBoundingBox()
+        geometry.computeBoundingSphere()
+
         const lunarSurface = new LunarSurface({
             heightMap: this.heightMap,
             terrainSize: this.size,
@@ -227,8 +240,11 @@ export default class Terrain {
 
     /** Get height at a world XZ coordinate (for placing objects later) */
     getHeightAt(worldX: number, worldZ: number): number {
+        // Match the visual terrain UV convention:
+        // PlaneGeometry rotated to XZ has u = X/size+0.5, v = 0.5 - Z/size
+        // DataTexture (flipY=false): row j at v = j/(res-1)
         const u = (worldX / this.size) + 0.5
-        const v = (worldZ / this.size) + 0.5
+        const v = 0.5 - (worldZ / this.size)
 
         if (u < 0 || u > 1 || v < 0 || v > 1) return 0
 

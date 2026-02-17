@@ -10,14 +10,10 @@ varying float vHeight;
 void main() {
     vUv = uv;
 
-    // Sample heightmap for vertex displacement (Y-up)
-    float height = texture2D(uHeightMap, uv).r * uHeightScale;
-    vHeight = height / uHeightScale;
+    // Height is baked into geometry vertices — no shader displacement needed
+    vHeight = position.y / uHeightScale;
 
-    vec3 displacedPosition = position;
-    displacedPosition.y += height;
-
-    // Compute normals from heightmap neighbors
+    // Compute normals from heightmap neighbors (smoother than geometry normals)
     float texelSize = 1.0 / float(textureSize(uHeightMap, 0).x);
     float heightL = texture2D(uHeightMap, uv + vec2(-texelSize, 0.0)).r * uHeightScale;
     float heightR = texture2D(uHeightMap, uv + vec2(texelSize, 0.0)).r * uHeightScale;
@@ -32,7 +28,7 @@ void main() {
     ));
 
     vNormal = normalize(normalMatrix * computedNormal);
-    vWorldPosition = (modelMatrix * vec4(displacedPosition, 1.0)).xyz;
+    vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
 
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }

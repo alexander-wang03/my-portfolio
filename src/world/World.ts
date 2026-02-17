@@ -6,6 +6,8 @@ import type Camera from '../engine/Camera'
 import type { GUI } from 'dat.gui'
 import Terrain from './Terrain'
 import Environment from './Environment'
+import Controls from './Controls'
+import Physics from './Physics'
 
 export interface WorldOptions {
     config: { debug: boolean; touch: boolean }
@@ -31,6 +33,8 @@ export default class World {
     container: THREE.Object3D
     terrain!: Terrain
     environment!: Environment
+    controls!: Controls
+    physics!: Physics
 
     constructor(options: WorldOptions) {
         this.config = options.config
@@ -47,6 +51,8 @@ export default class World {
 
         this.setTerrain()
         this.setEnvironment()
+        this.setControls()
+        this.setPhysics()
     }
 
     private setTerrain(): void {
@@ -62,5 +68,30 @@ export default class World {
     private setEnvironment(): void {
         this.environment = new Environment()
         this.container.add(this.environment.container)
+    }
+
+    private setControls(): void {
+        this.controls = new Controls({
+            config: this.config,
+            camera: this.camera,
+        })
+    }
+
+    private setPhysics(): void {
+        this.physics = new Physics({
+            time: this.time,
+            controls: this.controls,
+            terrain: this.terrain,
+            debug: this.debug,
+            config: this.config,
+        })
+
+        // Add debug wireframes to scene
+        this.container.add(this.physics.debugContainer)
+
+        // Camera follows the rover chassis
+        this.time.on('tick', () => {
+            this.camera.target.copy(this.physics.chassisPosition)
+        })
     }
 }

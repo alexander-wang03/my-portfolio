@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import * as dat from 'dat.gui'
+import RAPIER from '@dimforge/rapier3d-compat'
 import Sizes from './Utils/Sizes'
 import Time from './Utils/Time'
 import Resources from './Resources'
@@ -33,8 +34,16 @@ export default class Application {
         this.setDebug()
         this.setRenderer()
         this.setCamera()
-        this.setWorld()
+
+        // RAPIER must be initialized (WASM) before creating the World
+        this.initPhysicsAndWorld()
+
         this.setRenderLoop()
+    }
+
+    private async initPhysicsAndWorld(): Promise<void> {
+        await RAPIER.init()
+        this.setWorld()
     }
 
     private setConfig(): void {
