@@ -45,14 +45,15 @@ export default class Rover {
         const mastMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#d0d0d8'), indirect: 0 })
         const wheelMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#555560'), indirect: 0 })
         const antennaMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#ff3030'), indirect: 0 })
+        const armMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#c0c0c0'), indirect: 0 })
 
-        // === Body group (syncs with chassis rigid body) ===
         this.bodyGroup = new THREE.Group()
 
-        // Main body box — white (like real rover chassis)
         const bodyWidth = o.chassisHalfWidth * 2 * 0.85
         const bodyHeight = o.chassisHalfHeight * 1.0
         const bodyDepth = o.chassisHalfDepth * 2 * 0.8
+
+        // === Main chassis box ===
         const body = new THREE.Mesh(
             new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyDepth),
             bodyMat,
@@ -60,7 +61,7 @@ export default class Rover {
         body.position.y = o.chassisHalfHeight * 0.3
         this.bodyGroup.add(body)
 
-        // Deck / equipment bay — gold (thermal blanket look)
+        // === Equipment deck (gold thermal blanket) ===
         const deckHeight = bodyHeight * 0.25
         const deck = new THREE.Mesh(
             new THREE.BoxGeometry(bodyWidth * 0.9, deckHeight, bodyDepth * 0.7),
@@ -69,58 +70,164 @@ export default class Rover {
         deck.position.y = body.position.y + bodyHeight / 2 + deckHeight / 2
         this.bodyGroup.add(deck)
 
-        // Camera mast — gray metal
-        const mastHeight = 0.5
+        const deckTop = deck.position.y + deckHeight / 2
+
+        // === Remote Sensing Mast (RSM) — tall with rectangular camera head ===
+        const mastHeight = 0.7
         const mast = new THREE.Mesh(
-            new THREE.BoxGeometry(0.06, mastHeight, 0.06),
+            new THREE.BoxGeometry(0.05, mastHeight, 0.05),
             mastMat,
         )
-        mast.position.set(0, deck.position.y + deckHeight / 2 + mastHeight / 2, bodyDepth * 0.15)
+        mast.position.set(0, deckTop + mastHeight / 2, bodyDepth * 0.2)
         this.bodyGroup.add(mast)
 
-        // Mast head (camera) — gray
+        // Mast head — rectangular block with stereo cameras
+        const headWidth = 0.2
+        const headHeight = 0.07
+        const headDepth = 0.1
         const mastHead = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 8, 6),
+            new THREE.BoxGeometry(headWidth, headHeight, headDepth),
             mastMat,
         )
-        mastHead.position.set(
-            mast.position.x,
-            mast.position.y + mastHeight / 2 + 0.08,
-            mast.position.z,
-        )
+        const headY = mast.position.y + mastHeight / 2 + headHeight / 2
+        mastHead.position.set(0, headY, mast.position.z)
         this.bodyGroup.add(mastHead)
 
-        // Antenna — on an Object3D pivot for spring physics
+        // Stereo camera "eyes"
+        const eyeGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.03, 6)
+        eyeGeo.rotateX(Math.PI / 2)
+        for (const side of [-1, 1]) {
+            const eye = new THREE.Mesh(eyeGeo, wheelMat)
+            eye.position.set(side * 0.055, headY, mast.position.z + headDepth / 2 + 0.01)
+            this.bodyGroup.add(eye)
+        }
+
+        // === High-Gain Antenna (HGA) — circular dish on arm ===
+        const dishArmHeight = 0.2
+        const dishArm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.015, 0.015, dishArmHeight, 4),
+            mastMat,
+        )
+        dishArm.position.set(-bodyWidth * 0.3, deckTop + dishArmHeight / 2, -bodyDepth * 0.15)
+        this.bodyGroup.add(dishArm)
+
+        const dishRadius = 0.13
+        const dish = new THREE.Mesh(
+            new THREE.CylinderGeometry(dishRadius, dishRadius, 0.015, 12),
+            bodyMat,
+        )
+        dish.position.set(dishArm.position.x, deckTop + dishArmHeight + 0.01, dishArm.position.z)
+        dish.rotation.x = -0.2
+        dish.rotation.z = 0.15
+        this.bodyGroup.add(dish)
+
+        // === Robot Arm (simplified 2-segment, semi-folded) ===
+        const armThick = 0.035
+        const arm1Len = 0.3
+        const arm1 = new THREE.Mesh(
+            new THREE.BoxGeometry(armThick, armThick, arm1Len),
+            armMat,
+        )
+        const armBaseY = body.position.y + bodyHeight * 0.15
+        arm1.position.set(bodyWidth * 0.2, armBaseY, bodyDepth / 2 + arm1Len / 2)
+        this.bodyGroup.add(arm1)
+
+        const arm2Len = 0.2
+        const arm2 = new THREE.Mesh(
+            new THREE.BoxGeometry(armThick, armThick, arm2Len),
+            armMat,
+        )
+        arm2.position.set(arm1.position.x, armBaseY - 0.06, arm1.position.z + arm1Len / 2 + arm2Len / 2 - 0.02)
+        arm2.rotation.x = 0.15
+        this.bodyGroup.add(arm2)
+
+        // Arm turret / sample drill
+        const turret = new THREE.Mesh(
+            new THREE.BoxGeometry(0.05, 0.05, 0.05),
+            mastMat,
+        )
+        turret.position.set(arm2.position.x, arm2.position.y - 0.02, arm2.position.z + arm2Len / 2 + 0.02)
+        this.bodyGroup.add(turret)
+
+        // === RTG (Radioisotope Thermoelectric Generator) at rear ===
+        const rtgRadius = 0.055
+        const rtgLen = 0.28
+        const rtg = new THREE.Mesh(
+            new THREE.CylinderGeometry(rtgRadius, rtgRadius * 0.8, rtgLen, 8),
+            antennaMat,
+        )
+        rtg.rotation.x = Math.PI / 2
+        rtg.position.set(0, body.position.y + bodyHeight * 0.25, -bodyDepth / 2 - rtgLen / 2 + 0.05)
+        this.bodyGroup.add(rtg)
+
+        // RTG fin (vertical heat-dissipation fin)
+        const fin = new THREE.Mesh(
+            new THREE.BoxGeometry(0.015, 0.1, rtgLen * 0.7),
+            antennaMat,
+        )
+        fin.position.copy(rtg.position)
+        this.bodyGroup.add(fin)
+
+        // === Suspension Arms (rocker-bogie inspired) ===
+        const wheelY = -o.suspensionRestLength
+        const bodyBottom = body.position.y - bodyHeight / 2
+
+        for (const side of [-1, 1]) {
+            for (const wheelZ of [o.wheelFrontZ, o.wheelBackZ]) {
+                const sx = side * bodyWidth / 2
+                const sy = bodyBottom
+                const sz = 0
+                const ex = side * o.wheelOffsetX
+                const ey = wheelY
+                const ez = wheelZ
+
+                const dx = ex - sx, dy = ey - sy, dz = ez - sz
+                const len = Math.sqrt(dx * dx + dy * dy + dz * dz)
+
+                const arm = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.03, 0.04, len),
+                    armMat,
+                )
+                arm.position.set((sx + ex) / 2, (sy + ey) / 2, (sz + ez) / 2)
+
+                const dir = new THREE.Vector3(dx, dy, dz).normalize()
+                arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir)
+
+                this.bodyGroup.add(arm)
+            }
+        }
+
+        // === UHF Antenna (spring physics) ===
         this.antennaPivot = new THREE.Object3D()
         this.antennaPivot.position.set(
-            -bodyWidth * 0.3,
-            deck.position.y + deckHeight / 2,
-            -bodyDepth * 0.25,
+            bodyWidth * 0.3,
+            deckTop,
+            -bodyDepth * 0.2,
         )
 
-        const antenna = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.015, 0.015, 0.6, 4),
+        const uhfAntenna = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.01, 0.01, 0.4, 4),
             antennaMat,
         )
-        antenna.position.y = 0.3
+        uhfAntenna.position.y = 0.2
 
-        const antennaTip = new THREE.Mesh(
-            new THREE.SphereGeometry(0.04, 6, 4),
+        const uhfTip = new THREE.Mesh(
+            new THREE.SphereGeometry(0.025, 6, 4),
             antennaMat,
         )
-        antennaTip.position.y = 0.6
+        uhfTip.position.y = 0.4
 
-        this.antennaPivot.add(antenna, antennaTip)
+        this.antennaPivot.add(uhfAntenna, uhfTip)
         this.bodyGroup.add(this.antennaPivot)
 
         this.container.add(this.bodyGroup)
 
-        // === Wheels (separate meshes, synced individually to physics) ===
+        // === Wheels (synced individually to physics) ===
         const wheelGeo = new THREE.CylinderGeometry(
             o.wheelRadius, o.wheelRadius,
             o.wheelHalfWidth * 2, 12,
         )
-        wheelGeo.rotateZ(Math.PI / 2) // align cylinder axis with X (lateral)
+        wheelGeo.rotateZ(Math.PI / 2)
 
         for (let i = 0; i < 4; i++) {
             const wheel = new THREE.Mesh(wheelGeo, wheelMat)
