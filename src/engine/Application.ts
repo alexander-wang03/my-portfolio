@@ -35,7 +35,8 @@ export default class Application {
         this.setRenderer()
         this.setCamera()
 
-        // RAPIER must be initialized (WASM) before creating the World
+        // RAPIER must be initialized (WASM) before creating the World,
+        // and terrain STL must be loaded before physics can be set up
         this.initPhysicsAndWorld()
 
         this.setRenderLoop()
@@ -43,7 +44,7 @@ export default class Application {
 
     private async initPhysicsAndWorld(): Promise<void> {
         await RAPIER.init()
-        this.setWorld()
+        await this.setWorld()
     }
 
     private setConfig(): void {
@@ -96,7 +97,7 @@ export default class Application {
         this.scene.add(this.camera.container)
     }
 
-    private setWorld(): void {
+    private async setWorld(): Promise<void> {
         this.world = new World({
             config: this.config,
             debug: this.debug,
@@ -108,6 +109,7 @@ export default class Application {
             renderer: this.renderer,
         })
         this.scene.add(this.world.container)
+        await this.world.init()
     }
 
     private setRenderLoop(): void {

@@ -26,14 +26,26 @@ export default class Physics {
 
     // Debug visuals
     debugContainer: THREE.Object3D
-    chassisMesh!: THREE.Mesh
-    wheelMeshes: THREE.Mesh[] = []
+    private chassisMesh!: THREE.Mesh
+    private wheelDebugMeshes: THREE.Mesh[] = []
 
     // Vehicle state
     steering = 0
     forwardSpeed = 0
     chassisPosition = new THREE.Vector3()
     chassisQuaternion = new THREE.Quaternion()
+
+    // Wheel state (exposed for Rover visuals + DustParticles)
+    wheelWorldPositions: THREE.Vector3[] = [
+        new THREE.Vector3(), new THREE.Vector3(),
+        new THREE.Vector3(), new THREE.Vector3(),
+    ]
+    wheelGrounded: boolean[] = [false, false, false, false]
+    wheelSpinAngles: number[] = [0, 0, 0, 0]
+
+    // Acceleration tracking (for antenna spring physics)
+    acceleration = new THREE.Vector3()
+    private prevVelocity = new THREE.Vector3()
 
     // Vehicle tuning
     options = {
@@ -85,7 +97,7 @@ export default class Physics {
     }
 
     private setWorld(): void {
-        const gravity = { x: 0, y: -1.625, z: 0 }
+        const gravity = { x: 0, y: -3.72, z: 0 }
         this.world = new RAPIER.World(gravity)
     }
 
@@ -187,6 +199,8 @@ export default class Physics {
     }
 
     private setDebugVisuals(): void {
+        if (!this.config.debug) return
+
         const o = this.options
 
         // Chassis wireframe
@@ -209,7 +223,7 @@ export default class Physics {
         for (let i = 0; i < 4; i++) {
             const wheelMesh = new THREE.Mesh(wheelGeo, wheelMat)
             this.debugContainer.add(wheelMesh)
-            this.wheelMeshes.push(wheelMesh)
+            this.wheelDebugMeshes.push(wheelMesh)
         }
     }
 
@@ -285,10 +299,16 @@ export default class Physics {
             this.chassisPosition.set(pos.x, pos.y, pos.z)
             this.chassisQuaternion.set(rot.x, rot.y, rot.z, rot.w)
 
-            // Forward speed
+            // Forward speed + acceleration tracking
             const vel = this.chassisBody.linvel()
+            const currentVel = new THREE.Vector3(vel.x, vel.y, vel.z)
             const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.chassisQuaternion)
-            this.forwardSpeed = new THREE.Vector3(vel.x, vel.y, vel.z).dot(forward)
+            this.forwardSpeed = currentVel.dot(forward)
+
+            if (dt > 0) {
+                this.acceleration.copy(currentVel).sub(this.prevVelocity).divideScalar(dt)
+            }
+            this.prevVelocity.copy(currentVel)
 
             // --- Natural slowdown when not accelerating ---
             if (!this.controls.actions.up && !this.controls.actions.down && !this.controls.actions.brake) {
@@ -306,32 +326,39 @@ export default class Physics {
             // --- Upside-down detection ---
             this.checkUpsideDown()
 
-            // --- Update debug visuals ---
-            this.chassisMesh.position.copy(this.chassisPosition)
-            this.chassisMesh.quaternion.copy(this.chassisQuaternion)
-
+            // --- Compute wheel world positions + state ---
             for (let i = 0; i < 4; i++) {
                 const cp = this.vehicleController.wheelChassisConnectionPointCs(i)
                 const suspLen = this.vehicleController.wheelSuspensionLength(i) ?? 0
-                const radius = this.vehicleController.wheelRadius(i) ?? this.options.wheelRadius
 
                 if (!cp) continue
 
-                // Wheel position = chassis transform * (connectionPoint + suspensionDir * suspLen)
+                // Wheel center = connection point + suspension direction * suspLen
                 const wheelLocalPos = new THREE.Vector3(
                     cp.x,
-                    cp.y - suspLen - radius,
+                    cp.y - suspLen,
                     cp.z,
                 )
-                const wheelWorldPos = wheelLocalPos.applyQuaternion(this.chassisQuaternion).add(this.chassisPosition)
+                this.wheelWorldPositions[i].copy(
+                    wheelLocalPos.applyQuaternion(this.chassisQuaternion).add(this.chassisPosition),
+                )
+                this.wheelGrounded[i] = this.vehicleController.wheelIsInContact(i)
+                this.wheelSpinAngles[i] = this.vehicleController.wheelRotation(i) ?? 0
+            }
 
-                this.wheelMeshes[i].position.copy(wheelWorldPos)
-                this.wheelMeshes[i].quaternion.copy(this.chassisQuaternion)
+            // --- Update debug visuals ---
+            if (this.chassisMesh) {
+                this.chassisMesh.position.copy(this.chassisPosition)
+                this.chassisMesh.quaternion.copy(this.chassisQuaternion)
 
-                // Apply wheel spin rotation
-                const spinAngle = this.vehicleController.wheelRotation(i) ?? 0
-                const spinQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), spinAngle)
-                this.wheelMeshes[i].quaternion.multiply(spinQuat)
+                for (let i = 0; i < 4; i++) {
+                    this.wheelDebugMeshes[i].position.copy(this.wheelWorldPositions[i])
+                    this.wheelDebugMeshes[i].quaternion.copy(this.chassisQuaternion)
+                    const spinQuat = new THREE.Quaternion().setFromAxisAngle(
+                        new THREE.Vector3(1, 0, 0), this.wheelSpinAngles[i],
+                    )
+                    this.wheelDebugMeshes[i].quaternion.multiply(spinQuat)
+                }
             }
         })
     }

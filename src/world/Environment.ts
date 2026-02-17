@@ -6,43 +6,21 @@ export default class Environment {
     sunLight: THREE.DirectionalLight
     ambientLight: THREE.AmbientLight
     starField: StarField
-    earth: THREE.Mesh
 
     constructor() {
         this.container = new THREE.Object3D()
 
-        // Sun — primary directional light (harsh, no atmosphere to soften)
+        // Sun — primary directional light (harsh, thin atmosphere)
         this.sunLight = new THREE.DirectionalLight(0xfff5e6, 2.0)
         this.sunLight.position.set(50, 70, 30)
         this.container.add(this.sunLight)
 
-        // Very dim ambient (reflected earthshine)
-        this.ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.15)
+        // Dim ambient (scattered light from thin Mars atmosphere)
+        this.ambientLight = new THREE.AmbientLight(0x2a1a0e, 0.2)
         this.container.add(this.ambientLight)
 
-        // Star field — closer radius so they're visible at terrain edges
+        // Star field
         this.starField = new StarField({ count: 5000, radius: 120 })
         this.container.add(this.starField.container)
-
-        // Earth in the sky — positioned to be visible from the isometric camera
-        // Camera looks from roughly (+x, +y, +z) toward origin,
-        // so Earth needs to be in the upper part of that view (high Y, behind terrain)
-        this.earth = this.createEarth()
-        this.container.add(this.earth)
-    }
-
-    private createEarth(): THREE.Mesh {
-        const geometry = new THREE.SphereGeometry(4, 32, 32)
-
-        const material = new THREE.MeshBasicMaterial({
-            color: 0x4488cc,
-        })
-
-        const earth = new THREE.Mesh(geometry, material)
-        // Place at the horizon line — high up and behind the camera's viewing direction
-        // so it appears above the terrain edge
-        earth.position.set(-30, 45, -50)
-
-        return earth
     }
 }

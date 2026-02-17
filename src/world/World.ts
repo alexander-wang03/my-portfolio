@@ -8,6 +8,8 @@ import Terrain from './Terrain'
 import Environment from './Environment'
 import Controls from './Controls'
 import Physics from './Physics'
+import Rover from './Rover'
+import DustParticles from './Particles/DustParticles'
 
 export interface WorldOptions {
     config: { debug: boolean; touch: boolean }
@@ -35,6 +37,8 @@ export default class World {
     environment!: Environment
     controls!: Controls
     physics!: Physics
+    rover!: Rover
+    dust!: DustParticles
 
     constructor(options: WorldOptions) {
         this.config = options.config
@@ -48,20 +52,24 @@ export default class World {
 
         this.container = new THREE.Object3D()
         this.container.matrixAutoUpdate = false
+    }
 
-        this.setTerrain()
+    async init(): Promise<void> {
+        await this.setTerrain()
         this.setEnvironment()
         this.setControls()
         this.setPhysics()
+        await this.setRover()
+        this.setDust()
     }
 
-    private setTerrain(): void {
-        this.terrain = new Terrain({
-            size: 200,
-            segments: 256,
-            heightScale: 8,
-            sunDirection: new THREE.Vector3(0.5, 0.7, 0.3).normalize(),
-        })
+    private async setTerrain(): Promise<void> {
+        this.terrain = await Terrain.fromSTL(
+            '/models/terrain/curiosity-landing-site.stl',
+            200,
+            256,
+            new THREE.Vector3(0.5, 0.7, 0.3).normalize(),
+        )
         this.container.add(this.terrain.container)
     }
 
@@ -86,12 +94,29 @@ export default class World {
             config: this.config,
         })
 
-        // Add debug wireframes to scene
+        // Add debug wireframes to scene (only visible in debug mode)
         this.container.add(this.physics.debugContainer)
 
         // Camera follows the rover chassis
         this.time.on('tick', () => {
             this.camera.target.copy(this.physics.chassisPosition)
         })
+    }
+
+    private async setRover(): Promise<void> {
+        this.rover = new Rover({
+            time: this.time,
+            physics: this.physics,
+        })
+        await this.rover.load()
+        this.container.add(this.rover.container)
+    }
+
+    private setDust(): void {
+        this.dust = new DustParticles({
+            time: this.time,
+            physics: this.physics,
+        })
+        this.container.add(this.dust.container)
     }
 }
