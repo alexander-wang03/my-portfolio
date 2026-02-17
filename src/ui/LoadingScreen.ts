@@ -16,7 +16,7 @@ export default class LoadingScreen extends EventEmitter {
 
         const title = document.createElement('h1')
         title.className = 'loading-title'
-        title.textContent = 'MARS ROVER'
+        title.textContent = 'ALEXANDER WANG'
         this.element.appendChild(title)
 
         const subtitle = document.createElement('p')
