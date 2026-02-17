@@ -107,6 +107,7 @@ export default class World {
         this.rover = new Rover({
             time: this.time,
             physics: this.physics,
+            terrain: this.terrain,
         })
         await this.rover.load()
         this.container.add(this.rover.container)
