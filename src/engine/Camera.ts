@@ -86,6 +86,9 @@ export default class Camera {
             items: {
                 default: new THREE.Vector3(1.135, 1.15, 1.45),
                 projects: new THREE.Vector3(0.38, 1.63, 1.4),
+                experience: new THREE.Vector3(-0.9, 1.5, 1.3),
+                skills: new THREE.Vector3(1.5, 1.3, -0.6),
+                contact: new THREE.Vector3(0.6, 1.6, -1.2),
             },
             value: new THREE.Vector3(),
             set: () => {},

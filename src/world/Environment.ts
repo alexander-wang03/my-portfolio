@@ -17,7 +17,7 @@ export default class Environment {
     }
 
     private createFloor(): THREE.Mesh {
-        // Warm orange gradient matching folio-2019 palette
+        // Lighter orange terrain palette (folio-2019 style)
         const topLeft = new THREE.Color('#f5883c')
         const topRight = new THREE.Color('#ff9043')
         const bottomRight = new THREE.Color('#fccf92')

@@ -64,12 +64,11 @@ export default class IntroSection {
         const nameTexture = createTextTexture('ALEX WANG', 1024, 256, {
             fontSize: 140,
             color: '#ffffff',
-            bg: 'rgba(0,0,0,0)',
+            bg: '#1a0e08',
         })
 
         const boardMat = new THREE.MeshBasicMaterial({
             map: nameTexture,
-            transparent: true,
         })
 
         const boardMesh = new THREE.Mesh(boardGeo, boardMat)

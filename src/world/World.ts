@@ -10,12 +10,21 @@ import Controls from './Controls'
 import Physics from './Physics'
 import Rover from './Rover'
 import DustParticles from './Particles/DustParticles'
+import AmbientDust from './Particles/AmbientDust'
 import Zones from './Zones'
 import Areas from './Areas'
 import Objects from './Objects'
+import Walls from './Walls'
+import Tiles from './Tiles'
+import Rocks from './Rocks'
+import Sounds from './Sounds'
 import IntroSection from './Sections/IntroSection'
 import ProjectsSection from './Sections/ProjectsSection'
+import ExperienceSection from './Sections/ExperienceSection'
+import SkillsSection from './Sections/SkillsSection'
+import ContactSection from './Sections/ContactSection'
 import SectionOverlay from '../ui/SectionOverlay'
+import HUD from '../ui/HUD'
 
 export interface WorldOptions {
     config: { debug: boolean; touch: boolean }
@@ -45,10 +54,16 @@ export default class World {
     physics!: Physics
     rover!: Rover
     dust!: DustParticles
+    ambientDust!: AmbientDust
     zones!: Zones
     areas!: Areas
     objects!: Objects
     overlay!: SectionOverlay
+    walls!: Walls
+    tiles!: Tiles
+    rocks!: Rocks
+    sounds!: Sounds
+    hud!: HUD
 
     constructor(options: WorldOptions) {
         this.config = options.config
@@ -74,11 +89,17 @@ export default class World {
         this.setZones()
         this.setAreas()
         this.setObjects()
+        this.setWalls()
+        this.setTiles()
+        this.setRocks()
         this.setOverlay()
+        this.setHUD()
         this.setSections()
         onProgress?.(0.8)
         this.setRover()
         this.setDust()
+        this.setAmbientDust()
+        this.setSounds()
         onProgress?.(1.0)
     }
 
@@ -146,8 +167,35 @@ export default class World {
         this.container.add(this.objects.container)
     }
 
+    private setWalls(): void {
+        this.walls = new Walls({
+            objects: this.objects,
+            terrain: this.terrain,
+        })
+        this.container.add(this.walls.container)
+    }
+
+    private setTiles(): void {
+        this.tiles = new Tiles({
+            terrain: this.terrain,
+        })
+        this.container.add(this.tiles.container)
+    }
+
+    private setRocks(): void {
+        this.rocks = new Rocks({
+            terrain: this.terrain,
+            objects: this.objects,
+        })
+        this.container.add(this.rocks.container)
+    }
+
     private setOverlay(): void {
         this.overlay = new SectionOverlay()
+    }
+
+    private setHUD(): void {
+        this.hud = new HUD()
     }
 
     private setSections(): void {
@@ -160,7 +208,7 @@ export default class World {
         })
         this.container.add(intro.container)
 
-        // Projects section — offset to the side
+        // Projects section — east
         const projects = new ProjectsSection({
             objects: this.objects,
             zones: this.zones,
@@ -172,6 +220,65 @@ export default class World {
             z: 0,
         })
         this.container.add(projects.container)
+
+        // Experience section — south
+        const experience = new ExperienceSection({
+            objects: this.objects,
+            zones: this.zones,
+            areas: this.areas,
+            terrain: this.terrain,
+            camera: this.camera,
+            overlay: this.overlay,
+            x: 0,
+            z: -25,
+        })
+        this.container.add(experience.container)
+
+        // Skills section — west
+        const skills = new SkillsSection({
+            objects: this.objects,
+            zones: this.zones,
+            terrain: this.terrain,
+            camera: this.camera,
+            overlay: this.overlay,
+            x: -25,
+            z: 0,
+        })
+        this.container.add(skills.container)
+
+        // Contact section — north (past intro sign)
+        const contact = new ContactSection({
+            objects: this.objects,
+            zones: this.zones,
+            areas: this.areas,
+            terrain: this.terrain,
+            camera: this.camera,
+            overlay: this.overlay,
+            x: 0,
+            z: 25,
+        })
+        this.container.add(contact.container)
+
+        // Wire HUD to zone events for section name display
+        const sectionZones = [
+            { name: 'Projects', x: 25, z: 0 },
+            { name: 'Experience', x: 0, z: -25 },
+            { name: 'Skills', x: -25, z: 0 },
+            { name: 'Contact', x: 0, z: 25 },
+        ]
+
+        for (const sz of sectionZones) {
+            // Find matching zone by position
+            for (const zone of this.zones.items) {
+                const dx = Math.abs(zone.position.x - sz.x)
+                const dz = Math.abs(zone.position.z - sz.z)
+                if (dx < 1 && dz < 1) {
+                    zone.on('in', () => this.hud.showSection(sz.name))
+                    zone.on('out', () => this.hud.hideSection())
+                    break
+                }
+            }
+        }
     }
 
     private setRover(): void {
@@ -189,5 +296,20 @@ export default class World {
             physics: this.physics,
         })
         this.container.add(this.dust.container)
+    }
+
+    private setAmbientDust(): void {
+        this.ambientDust = new AmbientDust({
+            time: this.time,
+            physics: this.physics,
+        })
+        this.container.add(this.ambientDust.container)
+    }
+
+    private setSounds(): void {
+        this.sounds = new Sounds({
+            time: this.time,
+            physics: this.physics,
+        })
     }
 }

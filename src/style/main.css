@@ -190,6 +190,86 @@ body {
     }
 }
 
+/* ── Skills Grid ──────────────────────────────────────────────────── */
+
+.skills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.skill-tag {
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 144, 67, 0.3);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.card-subtitle {
+    font-size: 0.75rem !important;
+    color: #d4a574 !important;
+    margin-bottom: 4px !important;
+}
+
+/* ── HUD ──────────────────────────────────────────────────────────── */
+
+.hud-section-name {
+    position: fixed;
+    top: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(212, 165, 116, 0);
+    transition: color 0.4s ease;
+    z-index: 20;
+    pointer-events: none;
+    user-select: none;
+}
+
+.hud-section-name.visible {
+    color: rgba(212, 165, 116, 0.85);
+}
+
+.hud-hints {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 0.1em;
+    z-index: 20;
+    pointer-events: none;
+    user-select: none;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    transition: opacity 0.8s ease;
+}
+
+.hud-hints.hidden {
+    opacity: 0;
+}
+
+.hud-hints span {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-right: 4px;
+}
+
 /* ── Touch Controls ────────────────────────────────────────────────── */
 
 .touch-controls {

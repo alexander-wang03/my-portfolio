@@ -122,10 +122,10 @@ export default class ProjectsSection {
             const nameTexture = createTextTexture(project.title, 512, 128, {
                 fontSize: 56,
                 color: '#ffffff',
+                bg: '#1a0e08',
             })
             const boardFaceMat = new THREE.MeshBasicMaterial({
                 map: nameTexture,
-                transparent: true,
             })
             const board = new THREE.Mesh(boardGeo, boardFaceMat)
             board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05
