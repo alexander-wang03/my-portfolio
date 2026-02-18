@@ -26,9 +26,9 @@ export interface ContactSectionOptions {
 }
 
 const LINKS: ContactLink[] = [
-    { label: 'GitHub', icon: 'GH', url: 'https://github.com', color: '#ffffff' },
-    { label: 'LinkedIn', icon: 'LI', url: 'https://linkedin.com', color: '#0a66c2' },
-    { label: 'Email', icon: '@', url: 'mailto:hello@example.com', color: '#ff9043' },
+    { label: 'GitHub', icon: 'GH', url: 'https://github.com/alexander-wang03', color: '#ffffff' },
+    { label: 'LinkedIn', icon: 'LI', url: 'https://www.linkedin.com/in/alexander-wang03/', color: '#0a66c2' },
+    { label: 'Email', icon: '@', url: 'mailto:alexshuaiwang@gmail.com', color: '#ff9043' },
 ]
 
 function createTextTexture(
@@ -103,6 +103,7 @@ export default class ContactSection {
                 new THREE.MeshBasicMaterial({ map: iconTex, side: THREE.DoubleSide }),
             )
             iconBoard.position.y = pillarHeight / 2 + 0.65
+            iconBoard.rotation.y = Math.PI
 
             // Label board below icon (flat plane, double-sided)
             const labelTex = createTextTexture(link.label, 256, 64, {
@@ -115,6 +116,7 @@ export default class ContactSection {
                 new THREE.MeshBasicMaterial({ map: labelTex, side: THREE.DoubleSide }),
             )
             labelBoard.position.y = pillarHeight / 2 + 0.05
+            labelBoard.rotation.y = Math.PI
 
             const signGroup = new THREE.Group()
             signGroup.add(pillar, iconBoard, labelBoard)

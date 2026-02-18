@@ -22,13 +22,13 @@ export interface SkillsSectionOptions {
 }
 
 const SKILLS: Skill[] = [
-    { name: 'TypeScript', color: '#3178c6' },
-    { name: 'React', color: '#61dafb' },
-    { name: 'Three.js', color: '#ffffff' },
+    { name: 'C/C++', color: '#659ad2' },
     { name: 'Python', color: '#ffdd40' },
-    { name: 'Node.js', color: '#68a063' },
+    { name: 'MATLAB', color: '#e16737' },
+    { name: 'ROS2', color: '#22314e' },
+    { name: 'PyTorch', color: '#ee4c2c' },
+    { name: 'Linux', color: '#f5a623' },
     { name: 'AWS', color: '#ff9900' },
-    { name: 'Docker', color: '#2496ed' },
     { name: 'Git', color: '#f05032' },
 ]
 
@@ -91,6 +91,7 @@ export default class SkillsSection {
             const labelTex = createTextTexture(skill.name, 256, 256, {
                 fontSize: 40,
                 color: '#ffffff',
+                bg: skill.color,
             })
 
             const colorMat = createMatcapMaterial({
@@ -101,7 +102,6 @@ export default class SkillsSection {
 
             const textMat = new THREE.MeshBasicMaterial({
                 map: labelTex,
-                transparent: true,
             })
 
             // Box with text on front face, matcap on others
@@ -144,15 +144,11 @@ export default class SkillsSection {
     }
 
     private buildOverlayHTML(): string {
-        let html = '<h2>Skills</h2><div class="skills-grid">'
-        for (const skill of SKILLS) {
-            html += `
-                <div class="skill-tag" style="border-color: ${skill.color}">
-                    ${skill.name}
-                </div>
-            `
-        }
-        html += '</div>'
+        let html = '<h2>Skills</h2>'
+        html += '<p><strong>Languages:</strong> C/C++, Python, MATLAB, JavaScript, SQL</p>'
+        html += '<p><strong>Tools:</strong> Simulink, Fusion360, Linux, AWS, Git, Jenkins, Bazel</p>'
+        html += '<p><strong>Embedded:</strong> CAN, EtherCAT, GPIO, I2C, SPI, UART, ROS/ROS2, STM32</p>'
+        html += '<p><strong>AI/ML:</strong> PyTorch, TensorFlow, OpenCV, Hugging Face, Scikit-Learn</p>'
         return html
     }
 }

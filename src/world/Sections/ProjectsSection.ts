@@ -26,24 +26,24 @@ export interface ProjectsSectionOptions {
 
 const PROJECTS: Project[] = [
     {
-        title: 'Project Alpha',
-        description: 'A web application for interactive data visualization with real-time updates.',
-        url: '#',
+        title: 'TARS-AI',
+        description: 'Co-founded an open-source robotics community recreating the robot TARS from Interstellar — 1000+ members.',
+        url: 'https://github.com/TARS-AI-Community/TARS-AI',
     },
     {
-        title: 'Project Beta',
-        description: 'Mobile-first design system with reusable components and accessibility built in.',
-        url: '#',
+        title: 'BoreasLane',
+        description: 'First publicly available 3D winter condition lane dataset for autonomous vehicles.',
+        url: 'https://www.trailab.utias.utoronto.ca/',
     },
     {
-        title: 'Project Gamma',
-        description: 'Real-time collaboration tool enabling seamless team communication.',
-        url: '#',
+        title: 'aUToronto',
+        description: 'C++ multi-sensor fusion for autonomous vehicle state estimation — back-to-back 1st place at SAE AutoDrive.',
+        url: 'https://www.autodrive.utoronto.ca/',
     },
     {
-        title: 'Project Delta',
-        description: 'AI-powered analytics dashboard for business intelligence insights.',
-        url: '#',
+        title: 'SynthBoard',
+        description: 'Audio synthesizer with 4x4 button interface, RGB LEDs, and 8 knobs for real-time waveform manipulation.',
+        url: 'https://github.com/alexander-wang03/SynthBoard',
     },
 ]
 
@@ -191,7 +191,7 @@ export default class ProjectsSection {
                 <div class="project-card">
                     <h3>${project.title}</h3>
                     <p>${project.description}</p>
-                    <a href="${project.url}" target="_blank" rel="noopener">Visit &rarr;</a>
+                    <a href="${project.url}" target="_blank" rel="noopener">View Project &rarr;</a>
                 </div>
             `
         }

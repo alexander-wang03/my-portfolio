@@ -29,22 +29,28 @@ export interface ExperienceSectionOptions {
 
 const EXPERIENCES: Experience[] = [
     {
-        company: 'Tech Corp',
-        role: 'Senior Developer',
-        years: '2022 – Present',
-        description: 'Led frontend architecture for a SaaS platform serving 50k+ users.',
+        company: 'SpaceX',
+        role: 'Software Engineering Intern',
+        years: 'May 2025 – Aug 2025',
+        description: 'Designed PLC-based controller architecture for Hardware-in-the-Loop test systems, reducing downtime by 87%.',
     },
     {
-        company: 'StartupXYZ',
-        role: 'Full-Stack Engineer',
-        years: '2020 – 2022',
-        description: 'Built real-time collaboration features and microservice APIs.',
+        company: 'General Motors',
+        role: 'Software & Controls Intern',
+        years: 'May 2024 – Apr 2025',
+        description: 'Developed thermal control system software and automated SIL testing pipeline for EV propulsion.',
     },
     {
-        company: 'Digital Agency',
-        role: 'Junior Developer',
-        years: '2018 – 2020',
-        description: 'Developed responsive web applications and interactive experiences.',
+        company: 'aUToronto',
+        role: 'State Estimation Lead',
+        years: 'Sep 2023 – Jun 2025',
+        description: 'Led autonomous vehicle team to back-to-back 1st place finishes at SAE AutoDrive Challenge.',
+    },
+    {
+        company: 'TRAIL Lab',
+        role: 'AI Researcher',
+        years: 'May 2024 – Present',
+        description: 'Developing Bayesian 3D lane detection and 3D hierarchical scene graphs for VLA models.',
     },
 ]
 
