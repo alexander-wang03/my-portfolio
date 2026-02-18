@@ -39,23 +39,7 @@ export default class Area extends EventEmitter {
         this.mouseMesh.position.y = 0.1
         this.container.add(this.mouseMesh)
 
-        // Border outline (rectangle at ground level)
-        const w = this.halfExtents.x
-        const h = this.halfExtents.z
-        const points = [
-            new THREE.Vector3(-w, 0.05, -h),
-            new THREE.Vector3(w, 0.05, -h),
-            new THREE.Vector3(w, 0.05, h),
-            new THREE.Vector3(-w, 0.05, h),
-        ]
-        const geometry = new THREE.BufferGeometry().setFromPoints(points)
-        this.borderMat = new THREE.LineBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0,
-        })
-        const border = new THREE.LineLoop(geometry, this.borderMat)
-        this.container.add(border)
+        this.borderMat = new THREE.LineBasicMaterial({ opacity: 0, transparent: true })
     }
 
     in(): void {

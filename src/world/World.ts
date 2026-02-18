@@ -24,6 +24,7 @@ import ProjectsSection from './Sections/ProjectsSection'
 import ExperienceSection from './Sections/ExperienceSection'
 import SkillsSection from './Sections/SkillsSection'
 import ContactSection from './Sections/ContactSection'
+
 import SectionOverlay from '../ui/SectionOverlay'
 import HUD from '../ui/HUD'
 
