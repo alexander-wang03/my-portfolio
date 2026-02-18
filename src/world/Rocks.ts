@@ -180,6 +180,7 @@ export default class Rocks {
                 ),
                 mass: 0,
                 useConvexHull: true,
+                shadow: { sizeX: scale * 2, sizeZ: scale * 2 },
             })
         }
 
@@ -212,6 +213,7 @@ export default class Rocks {
                 ),
                 mass: 0,
                 useConvexHull: true,
+                shadow: { sizeX: scale * 1.5, sizeZ: scale * 1.5 },
             })
         }
 
@@ -267,6 +269,7 @@ export default class Rocks {
                 ),
                 mass: 0,
                 useConvexHull: true,
+                shadow: { sizeX: scale * 1.8, sizeZ: scale * 1.2 },
             })
         }
 
@@ -298,6 +301,7 @@ export default class Rocks {
                 ),
                 mass: 0,
                 useConvexHull: true,
+                shadow: { sizeX: scale * 1.2, sizeZ: scale * 1.2 },
             })
         }
 
@@ -336,6 +340,7 @@ export default class Rocks {
                     ),
                     mass: 0,
                     useConvexHull: true,
+                    shadow: { sizeX: scale * 1.5, sizeZ: scale * 1.5 },
                 })
             }
         }

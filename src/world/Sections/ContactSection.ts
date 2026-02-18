@@ -86,31 +86,31 @@ export default class ContactSection {
 
             const pillarHeight = 1.6
             const pillar = new THREE.Mesh(
-                new THREE.BoxGeometry(0.1, pillarHeight, 0.1),
+                new THREE.CylinderGeometry(0.05, 0.05, pillarHeight, 8),
                 pillarMat,
             )
 
-            // Icon board (larger icon text)
+            // Icon board (flat plane, double-sided)
             const iconTex = createTextTexture(link.icon, 256, 256, {
                 fontSize: 100,
                 color: link.color,
                 bg: '#1a0e08',
             })
             const iconBoard = new THREE.Mesh(
-                new THREE.BoxGeometry(1.2, 1.2, 0.08),
-                new THREE.MeshBasicMaterial({ map: iconTex }),
+                new THREE.PlaneGeometry(1.2, 1.2),
+                new THREE.MeshBasicMaterial({ map: iconTex, side: THREE.DoubleSide }),
             )
             iconBoard.position.y = pillarHeight / 2 + 0.65
 
-            // Label board below icon
+            // Label board below icon (flat plane, double-sided)
             const labelTex = createTextTexture(link.label, 256, 64, {
                 fontSize: 36,
                 color: '#ffffff',
                 bg: '#1a0e08',
             })
             const labelBoard = new THREE.Mesh(
-                new THREE.BoxGeometry(1.8, 0.4, 0.06),
-                new THREE.MeshBasicMaterial({ map: labelTex }),
+                new THREE.PlaneGeometry(1.8, 0.4),
+                new THREE.MeshBasicMaterial({ map: labelTex, side: THREE.DoubleSide }),
             )
             labelBoard.position.y = pillarHeight / 2 + 0.05
 

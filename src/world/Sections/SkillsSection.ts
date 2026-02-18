@@ -120,6 +120,7 @@ export default class SkillsSection {
                 position: new THREE.Vector3(bx, terrainY + blockSize / 2 + 0.5, bz),
                 mass: 1.0,
                 restitution: 0.4,
+                shadow: { sizeX: 0.6, sizeZ: 0.6 },
             })
         }
     }

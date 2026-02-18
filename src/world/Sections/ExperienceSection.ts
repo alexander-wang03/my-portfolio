@@ -103,13 +103,13 @@ export default class ExperienceSection {
 
             const pillarHeight = 1.8
             const pillar = new THREE.Mesh(
-                new THREE.BoxGeometry(0.1, pillarHeight, 0.1),
+                new THREE.CylinderGeometry(0.05, 0.05, pillarHeight, 8),
                 pillarMat,
             )
 
             const boardWidth = 3.0
             const boardHeight = 0.9
-            const boardGeo = new THREE.BoxGeometry(boardWidth, boardHeight, 0.08)
+            const boardGeo = new THREE.PlaneGeometry(boardWidth, boardHeight)
 
             const labelCanvas = document.createElement('canvas')
             labelCanvas.width = 512
@@ -131,6 +131,7 @@ export default class ExperienceSection {
 
             const boardFaceMat = new THREE.MeshBasicMaterial({
                 map: nameTexture,
+                side: THREE.DoubleSide,
             })
             const board = new THREE.Mesh(boardGeo, boardFaceMat)
             board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05
@@ -188,6 +189,7 @@ export default class ExperienceSection {
                 position: new THREE.Vector3(bx, by, bz),
                 mass: 1.0,
                 restitution: 0.3,
+                shadow: { sizeX: 0.45, sizeZ: 0.45 },
             })
         }
     }

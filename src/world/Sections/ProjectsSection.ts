@@ -106,17 +106,17 @@ export default class ProjectsSection {
             const pz = options.z
             const terrainY = options.terrain.getHeightAt(px, pz)
 
-            // Pillar
+            // Pillar (cylinder)
             const pillarHeight = 1.8
             const pillar = new THREE.Mesh(
-                new THREE.BoxGeometry(0.1, pillarHeight, 0.1),
+                new THREE.CylinderGeometry(0.05, 0.05, pillarHeight, 8),
                 pillarMat,
             )
 
-            // Board with project name
+            // Board with project name (flat plane, double-sided)
             const boardWidth = 2.5
             const boardHeight = 0.8
-            const boardGeo = new THREE.BoxGeometry(boardWidth, boardHeight, 0.08)
+            const boardGeo = new THREE.PlaneGeometry(boardWidth, boardHeight)
             const nameTexture = createTextTexture(project.title, 512, 128, {
                 fontSize: 56,
                 color: '#ffffff',
@@ -124,6 +124,7 @@ export default class ProjectsSection {
             })
             const boardFaceMat = new THREE.MeshBasicMaterial({
                 map: nameTexture,
+                side: THREE.DoubleSide,
             })
             const board = new THREE.Mesh(boardGeo, boardFaceMat)
             board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05

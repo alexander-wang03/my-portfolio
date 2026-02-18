@@ -2,6 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat'
 import * as THREE from 'three'
 import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'
+import type Shadows from './Shadows'
 
 export interface ObjectAddOptions {
     mesh: THREE.Object3D
@@ -11,6 +12,8 @@ export interface ObjectAddOptions {
     colliderDesc?: RAPIER.ColliderDesc
     restitution?: number
     useConvexHull?: boolean
+    shadow?: { sizeX: number; sizeZ: number }
+    startAsleep?: boolean
 }
 
 export interface PhysicsObject {
@@ -22,11 +25,13 @@ export default class Objects {
     container: THREE.Object3D
     items: PhysicsObject[]
     private physics: Physics
+    private shadows?: Shadows
 
-    constructor(options: { time: Time; physics: Physics }) {
+    constructor(options: { time: Time; physics: Physics; shadows?: Shadows }) {
         this.container = new THREE.Object3D()
         this.items = []
         this.physics = options.physics
+        this.shadows = options.shadows
 
         // Sync dynamic objects each tick
         options.time.on('tick', () => {
@@ -90,8 +95,17 @@ export default class Objects {
 
         this.physics.world.createCollider(colliderDesc, body)
 
+        if (options.startAsleep) {
+            body.sleep()
+        }
+
         const item: PhysicsObject = { mesh, body }
         this.items.push(item)
+
+        if (options.shadow && this.shadows) {
+            this.shadows.add(mesh, options.shadow)
+        }
+
         return item
     }
 

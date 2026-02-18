@@ -17,6 +17,7 @@ import Objects from './Objects'
 import Walls from './Walls'
 import Tiles from './Tiles'
 import Rocks from './Rocks'
+import Shadows from './Shadows'
 import Sounds from './Sounds'
 import IntroSection from './Sections/IntroSection'
 import ProjectsSection from './Sections/ProjectsSection'
@@ -62,6 +63,7 @@ export default class World {
     walls!: Walls
     tiles!: Tiles
     rocks!: Rocks
+    shadows!: Shadows
     sounds!: Sounds
     hud!: HUD
 
@@ -88,6 +90,7 @@ export default class World {
         onProgress?.(0.5)
         this.setZones()
         this.setAreas()
+        this.setShadows()
         this.setObjects()
         this.setWalls()
         this.setTiles()
@@ -159,10 +162,19 @@ export default class World {
         this.container.add(this.areas.container)
     }
 
+    private setShadows(): void {
+        this.shadows = new Shadows({
+            time: this.time,
+            terrain: this.terrain,
+        })
+        this.container.add(this.shadows.container)
+    }
+
     private setObjects(): void {
         this.objects = new Objects({
             time: this.time,
             physics: this.physics,
+            shadows: this.shadows,
         })
         this.container.add(this.objects.container)
     }
