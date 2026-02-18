@@ -4,6 +4,7 @@ import type Areas from '../Areas'
 import type Terrain from '../Terrain'
 import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
+import type Shadows from '../Shadows'
 import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
 
 interface ContactLink {
@@ -17,6 +18,7 @@ export interface ContactSectionOptions {
     zones: Zones
     areas: Areas
     terrain: Terrain
+    shadows: Shadows
     camera: Camera
     overlay: SectionOverlay
     x: number
@@ -119,6 +121,8 @@ export default class ContactSection {
 
             signGroup.position.set(px, terrainY + pillarHeight / 2, pz)
             this.container.add(signGroup)
+
+            options.shadows.add(signGroup, { sizeX: 1.5, sizeZ: 0.4, shape: 'box' })
         }
     }
 

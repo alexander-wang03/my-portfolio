@@ -12,7 +12,7 @@ export interface ObjectAddOptions {
     colliderDesc?: RAPIER.ColliderDesc
     restitution?: number
     useConvexHull?: boolean
-    shadow?: { sizeX: number; sizeZ: number }
+    shadow?: { sizeX: number; sizeZ: number; shape?: 'ellipse' | 'box' }
     startAsleep?: boolean
 }
 

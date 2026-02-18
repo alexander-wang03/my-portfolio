@@ -28,9 +28,9 @@ export default class BlockLetters {
         const metalTex = loadMatcapTexture('metal')
 
         const text = 'ALEX WANG'
-        const letterSize = 0.8
-        const letterDepth = 0.4
-        const spacing = 1.1 // spacing between letter origins
+        const letterSize = 1.6
+        const letterDepth = 0.8
+        const spacing = 2.2 // spacing between letter origins
 
         // Compute total width for centering
         const totalLetters = text.replace(/ /g, '').length
@@ -81,11 +81,10 @@ export default class BlockLetters {
             options.objects.add({
                 mesh,
                 position: new THREE.Vector3(px, py, pz),
-                mass: 1.5,
+                mass: 3.0,
                 restitution: 0.2,
                 useConvexHull: true,
-                shadow: { sizeX: 0.8, sizeZ: 0.5 },
-                startAsleep: true,
+                shadow: { sizeX: 1.92, sizeZ: 1.2 },
             })
 
             xOffset += spacing

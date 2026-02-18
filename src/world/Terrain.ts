@@ -14,12 +14,23 @@ export default class Terrain {
     segments: number
     heightScale: number
 
-    // Shadow uniforms — updated by Rover each frame
+    // Rover shadow uniforms — updated by Rover each frame
     shadowUniforms = {
         uShadowPos: { value: new THREE.Vector3() },
         uShadowAngle: { value: 0 },
         uShadowSize: { value: new THREE.Vector2(1, 1.5) },
         uShadowAlpha: { value: 0 },
+    }
+
+    // Object shadow DataTexture — updated by Shadows each frame
+    // Each shadow uses 2 texels: texel0=(posX, posZ, sizeX, sizeZ), texel1=(angle, alpha, shape, 0)
+    static readonly MAX_OBJ_SHADOWS = 128
+    objShadowData = new Float32Array(Terrain.MAX_OBJ_SHADOWS * 2 * 4)
+    objShadowTexture!: THREE.DataTexture
+    objectShadowUniforms!: {
+        uObjShadowData: { value: THREE.DataTexture }
+        uObjShadowCount: { value: number }
+        uObjShadowTexWidth: { value: number }
     }
 
     constructor(options: TerrainOptions) {
@@ -28,6 +39,21 @@ export default class Terrain {
         this.segments = options.segments
         this.heightScale = options.heightScale
         this.heightData = new Float32Array((this.segments + 1) * (this.segments + 1))
+
+        const texWidth = Terrain.MAX_OBJ_SHADOWS * 2
+        this.objShadowTexture = new THREE.DataTexture(
+            this.objShadowData, texWidth, 1,
+            THREE.RGBAFormat, THREE.FloatType,
+        )
+        this.objShadowTexture.minFilter = THREE.NearestFilter
+        this.objShadowTexture.magFilter = THREE.NearestFilter
+        this.objShadowTexture.needsUpdate = true
+
+        this.objectShadowUniforms = {
+            uObjShadowData: { value: this.objShadowTexture },
+            uObjShadowCount: { value: 0 },
+            uObjShadowTexWidth: { value: texWidth },
+        }
 
         this.generateHeightmap()
         this.createMesh()
@@ -122,6 +148,7 @@ export default class Terrain {
                 uHeightScale: { value: this.heightScale },
                 uHalfSize: { value: halfSize },
                 ...this.shadowUniforms,
+                ...this.objectShadowUniforms,
             },
             vertexShader: /* glsl */ `
                 varying vec2 vUv;
@@ -142,6 +169,10 @@ export default class Terrain {
                 uniform float uShadowAngle;
                 uniform vec2 uShadowSize;
                 uniform float uShadowAlpha;
+
+                uniform sampler2D uObjShadowData;
+                uniform int uObjShadowCount;
+                uniform float uObjShadowTexWidth;
 
                 varying vec2 vUv;
                 varying vec3 vWorldPosition;
@@ -172,6 +203,41 @@ export default class Terrain {
                     float boxDist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
                     float shadowMask = smoothstep(0.5, 0.0, boxDist) * uShadowAlpha;
                     color *= 1.0 - shadowMask * 0.55;
+
+                    // Object shadows (rocks, blocks, letters, signs)
+                    for (int i = 0; i < 128; i++) {
+                        if (i >= uObjShadowCount) break;
+
+                        float u0 = (float(i) * 2.0 + 0.5) / uObjShadowTexWidth;
+                        float u1 = (float(i) * 2.0 + 1.5) / uObjShadowTexWidth;
+                        vec4 d0 = texture2D(uObjShadowData, vec2(u0, 0.5));
+                        vec4 d1 = texture2D(uObjShadowData, vec2(u1, 0.5));
+
+                        vec2 sPos = d0.xy;
+                        vec2 sSize = d0.zw;
+                        float sAngle = d1.x;
+                        float sAlpha = d1.y;
+                        float sShape = d1.z;
+
+                        vec2 toFragObj = vWorldPosition.xz - sPos;
+                        float csObj = cos(sAngle);
+                        float snObj = sin(sAngle);
+                        vec2 localObj = vec2(
+                            toFragObj.x * csObj - toFragObj.y * snObj,
+                            toFragObj.x * snObj + toFragObj.y * csObj
+                        );
+
+                        // Box SDF
+                        vec2 qObj = abs(localObj) - sSize;
+                        float boxMask = smoothstep(0.3, 0.0,
+                            length(max(qObj, 0.0)) + min(max(qObj.x, qObj.y), 0.0));
+
+                        // Ellipse SDF (tight falloff to match rock footprint)
+                        float ellipseMask = smoothstep(1.15, 0.6, length(localObj / sSize));
+
+                        float objMask = mix(ellipseMask, boxMask, sShape) * sAlpha;
+                        color *= 1.0 - objMask * 0.55;
+                    }
 
                     // Edge fade
                     float edgeDist = max(abs(vWorldPosition.x), abs(vWorldPosition.z)) / uHalfSize;

@@ -167,7 +167,6 @@ export default class World {
             time: this.time,
             terrain: this.terrain,
         })
-        this.container.add(this.shadows.container)
     }
 
     private setObjects(): void {
@@ -225,6 +224,7 @@ export default class World {
             zones: this.zones,
             areas: this.areas,
             terrain: this.terrain,
+            shadows: this.shadows,
             camera: this.camera,
             overlay: this.overlay,
             x: 25,
@@ -238,6 +238,7 @@ export default class World {
             zones: this.zones,
             areas: this.areas,
             terrain: this.terrain,
+            shadows: this.shadows,
             camera: this.camera,
             overlay: this.overlay,
             x: 0,
@@ -262,6 +263,7 @@ export default class World {
             zones: this.zones,
             areas: this.areas,
             terrain: this.terrain,
+            shadows: this.shadows,
             camera: this.camera,
             overlay: this.overlay,
             x: 0,

@@ -1,24 +1,20 @@
-import * as THREE from 'three'
+import { Euler, type Object3D } from 'three'
 import type Time from '../engine/Utils/Time'
-import type Terrain from './Terrain'
-import vertexShader from '../shaders/shadow/vertex.glsl'
-import fragmentShader from '../shaders/shadow/fragment.glsl'
+import Terrain from './Terrain'
 
 export interface ShadowAddOptions {
     sizeX: number
     sizeZ: number
     alpha?: number
-    offsetY?: number
+    shape?: 'ellipse' | 'box'
 }
 
 interface ShadowItem {
-    reference: THREE.Object3D
-    mesh: THREE.Mesh
-    material: THREE.ShaderMaterial
-    offsetY: number
+    reference: Object3D
     alpha: number
     sizeX: number
     sizeZ: number
+    shape: 'ellipse' | 'box'
 }
 
 export interface ShadowsOptions {
@@ -27,15 +23,10 @@ export interface ShadowsOptions {
 }
 
 export default class Shadows {
-    container: THREE.Object3D
     items: ShadowItem[] = []
     private terrain: Terrain
 
-    // Sun direction for shadow projection (normalized)
-    private sun = new THREE.Vector3(1, -2, 1.5).normalize()
-
     constructor(options: ShadowsOptions) {
-        this.container = new THREE.Object3D()
         this.terrain = options.terrain
 
         options.time.on('tick', () => {
@@ -43,65 +34,50 @@ export default class Shadows {
         })
     }
 
-    add(reference: THREE.Object3D, options: ShadowAddOptions): void {
-        const material = new THREE.ShaderMaterial({
-            vertexShader,
-            fragmentShader,
-            uniforms: {
-                uColor: { value: new THREE.Color('#1a0e08') },
-                uAlpha: { value: options.alpha ?? 0.6 },
-                uFadeRadius: { value: 0.35 },
-            },
-            transparent: true,
-            depthWrite: false,
-        })
-
-        const geometry = new THREE.PlaneGeometry(1, 1)
-        const mesh = new THREE.Mesh(geometry, material)
-        mesh.rotation.x = -Math.PI / 2 // Lay flat on ground
-        this.container.add(mesh)
-
+    add(reference: Object3D, options: ShadowAddOptions): void {
         this.items.push({
             reference,
-            mesh,
-            material,
-            offsetY: options.offsetY ?? 0.01,
             alpha: options.alpha ?? 0.6,
             sizeX: options.sizeX,
             sizeZ: options.sizeZ,
+            shape: options.shape ?? 'ellipse',
         })
     }
 
     private update(): void {
-        for (const item of this.items) {
+        const data = this.terrain.objShadowData
+        const count = Math.min(this.items.length, Terrain.MAX_OBJ_SHADOWS)
+        this.terrain.objectShadowUniforms.uObjShadowCount.value = count
+
+        for (let i = 0; i < count; i++) {
+            const item = this.items[i]
             const refPos = item.reference.position
 
-            // Project shadow position: offset by sun direction scaled by object height above terrain
             const terrainY = this.terrain.getHeightAt(refPos.x, refPos.z)
             const heightAbove = refPos.y - terrainY
 
-            // Shadow offset: project sun direction onto XZ plane, scaled by height
-            const offsetX = -this.sun.x / this.sun.y * heightAbove
-            const offsetZ = -this.sun.z / this.sun.y * heightAbove
+            // Texel 0: posX, posZ, halfSizeX, halfSizeZ (shadow directly below object)
+            const base0 = i * 2 * 4
+            data[base0 + 0] = refPos.x
+            data[base0 + 1] = refPos.z
+            data[base0 + 2] = item.sizeX * 0.5
+            data[base0 + 3] = item.sizeZ * 0.5
 
-            item.mesh.position.set(
-                refPos.x + offsetX,
-                terrainY + item.offsetY,
-                refPos.z + offsetZ,
-            )
-
-            // Scale shadow (plane is 1x1, scale to desired size)
-            item.mesh.scale.set(item.sizeX, item.sizeZ, 1)
-
-            // Fade alpha based on height (shadow disappears when object is far from ground)
+            // Texel 1: angle, alpha, shape (0=ellipse, 1=box), unused
+            const base1 = (i * 2 + 1) * 4
+            const euler = _euler.setFromQuaternion(item.reference.quaternion, 'YXZ')
             const maxHeight = 5
             const heightFade = 1 - Math.min(heightAbove / maxHeight, 1)
-            item.material.uniforms.uAlpha.value = item.alpha * heightFade * heightFade
 
-            // Match reference Y-rotation
-            const euler = new THREE.Euler()
-            euler.setFromQuaternion(item.reference.quaternion, 'YXZ')
-            item.mesh.rotation.set(-Math.PI / 2, 0, -euler.y)
+            data[base1 + 0] = euler.y
+            data[base1 + 1] = item.alpha * heightFade * heightFade
+            data[base1 + 2] = item.shape === 'box' ? 1.0 : 0.0
+            data[base1 + 3] = 0
         }
+
+        this.terrain.objShadowTexture.needsUpdate = true
     }
 }
+
+// Reusable Euler to avoid allocation per frame
+const _euler = new Euler()
