@@ -89,6 +89,7 @@ export default class Camera {
                 experience: new THREE.Vector3(-0.9, 1.5, 1.3),
                 skills: new THREE.Vector3(1.5, 1.3, -0.6),
                 contact: new THREE.Vector3(0.6, 1.6, -1.2),
+                intro: new THREE.Vector3(1.0, 1.2, 1.3),
             },
             value: new THREE.Vector3(),
             set: () => {},

@@ -214,7 +214,11 @@ export default class World {
         // Intro section — near spawn
         const intro = new IntroSection({
             objects: this.objects,
+            zones: this.zones,
             terrain: this.terrain,
+            shadows: this.shadows,
+            camera: this.camera,
+            overlay: this.overlay,
             x: 0,
             z: 0,
         })
@@ -274,6 +278,7 @@ export default class World {
 
         // Wire HUD to zone events for section name display
         const sectionZones = [
+            { name: 'About Me', x: 0, z: -2 },
             { name: 'Projects', x: 25, z: 0 },
             { name: 'Experience', x: 0, z: -25 },
             { name: 'Skills', x: -25, z: 0 },
