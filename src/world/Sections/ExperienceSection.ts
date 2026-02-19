@@ -206,6 +206,7 @@ export default class ExperienceSection {
 
     private buildOverlayHTML(): string {
         let html = '<h2>Experience</h2>'
+        html += '<div class="project-card"><a href="/CV.pdf" target="_blank" rel="noopener">View Resume &rarr;</a></div>'
         for (const exp of EXPERIENCES) {
             html += `
                 <div class="project-card">
