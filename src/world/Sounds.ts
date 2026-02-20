@@ -44,7 +44,7 @@ export default class Sounds {
     private initAudio(): void {
         this.ctx = new AudioContext()
         this.masterGain = this.ctx.createGain()
-        this.masterGain.gain.value = 0.3
+        this.masterGain.gain.value = 1.0
         this.masterGain.connect(this.ctx.destination)
 
         this.setupEngine()
@@ -85,7 +85,7 @@ export default class Sounds {
         }
 
         this.windGain = this.ctx.createGain()
-        this.windGain.gain.value = 0.04
+        this.windGain.gain.value = 0.02
         this.windGain.connect(this.masterGain)
 
         // Band-pass filter for wind character
@@ -146,7 +146,7 @@ export default class Sounds {
         // Engine pitch and volume scale with speed
         const speedRatio = Math.min(speed / maxSpeed, 1)
         const targetFreq = 40 + speedRatio * 80
-        const targetVol = speedRatio * 0.12
+        const targetVol = speedRatio * 0.35
 
         this.engineOsc.frequency.value += (targetFreq - this.engineOsc.frequency.value) * 0.1
         this.engineGain.gain.value += (targetVol - this.engineGain.gain.value) * 0.1
@@ -157,7 +157,7 @@ export default class Sounds {
             if (e.code === 'KeyM') {
                 this.muted = !this.muted
                 if (this.masterGain) {
-                    this.masterGain.gain.value = this.muted ? 0 : 0.3
+                    this.masterGain.gain.value = this.muted ? 0 : 1.0
                 }
             }
         })
@@ -169,7 +169,7 @@ export default class Sounds {
             if (document.hidden) {
                 this.masterGain.gain.value = 0
             } else if (!this.muted) {
-                this.masterGain.gain.value = 0.3
+                this.masterGain.gain.value = 1.0
             }
         })
     }

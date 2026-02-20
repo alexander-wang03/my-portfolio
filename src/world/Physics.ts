@@ -58,15 +58,15 @@ export default class Physics {
         wheelFrontZ: 0.65,
         wheelBackZ: -0.55,
         wheelOffsetX: 0.55,
-        suspensionRestLength: 0.3,
-        suspensionStiffness: 24,
-        suspensionDamping: 4.0,
-        suspensionCompression: 2.5,
-        suspensionTravel: 0.4,
-        frictionSlip: 3.0,
-        maxEngineForce: 70,
-        maxEngineForceBoost: 110,
-        maxSpeed: 16,
+        suspensionRestLength: 0.25,
+        suspensionStiffness: 50,
+        suspensionDamping: 1.8,
+        suspensionCompression: 1.5,
+        suspensionTravel: 0.3,
+        frictionSlip: 10,
+        maxEngineForce: 210,
+        maxEngineForceBoost: 330,
+        maxSpeed: 21,
         maxSteeringAngle: Math.PI * 0.2,
         steeringSpeed: 0.04,
         brakeForce: 8,
@@ -97,7 +97,7 @@ export default class Physics {
     }
 
     private setWorld(): void {
-        const gravity = { x: 0, y: -3.72, z: 0 }
+        const gravity = { x: 0, y: -13, z: 0 }
         this.world = new RAPIER.World(gravity)
     }
 
@@ -263,7 +263,7 @@ export default class Physics {
             const maxForce = baseForce * forceMult
 
             if (this.controls.actions.up) {
-                // All-wheel drive — spread force across 4 wheels to prevent wheelies
+                // All-wheel drive — spread force across 4 wheels
                 const perWheel = maxForce * 0.5
                 for (let i = 0; i < 4; i++) {
                     this.vehicleController.setWheelEngineForce(i, perWheel)
@@ -299,6 +299,20 @@ export default class Physics {
             const rot = this.chassisBody.rotation()
             this.chassisPosition.set(pos.x, pos.y, pos.z)
             this.chassisQuaternion.set(rot.x, rot.y, rot.z, rot.w)
+
+            // --- Anti-wheelie: clamp pitch angular velocity only ---
+            const angvel = this.chassisBody.angvel()
+            const localRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.chassisQuaternion)
+            const pitchAngVel = localRight.x * angvel.x + localRight.y * angvel.y + localRight.z * angvel.z
+            const maxPitch = 1.5
+            if (Math.abs(pitchAngVel) > maxPitch) {
+                const excess = pitchAngVel - Math.sign(pitchAngVel) * maxPitch
+                this.chassisBody.setAngvel({
+                    x: angvel.x - localRight.x * excess,
+                    y: angvel.y - localRight.y * excess,
+                    z: angvel.z - localRight.z * excess,
+                }, true)
+            }
 
             // Forward speed + acceleration tracking
             const vel = this.chassisBody.linvel()

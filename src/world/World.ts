@@ -26,7 +26,6 @@ import SkillsSection from './Sections/SkillsSection'
 import ContactSection from './Sections/ContactSection'
 
 import SectionOverlay from '../ui/SectionOverlay'
-import HUD from '../ui/HUD'
 
 export interface WorldOptions {
     config: { debug: boolean; touch: boolean }
@@ -66,7 +65,6 @@ export default class World {
     rocks!: Rocks
     shadows!: Shadows
     sounds!: Sounds
-    hud!: HUD
 
     constructor(options: WorldOptions) {
         this.config = options.config
@@ -97,7 +95,6 @@ export default class World {
         this.setTiles()
         this.setRocks()
         this.setOverlay()
-        this.setHUD()
         this.setSections()
         onProgress?.(0.8)
         this.setRover()
@@ -206,10 +203,6 @@ export default class World {
         this.overlay = new SectionOverlay()
     }
 
-    private setHUD(): void {
-        this.hud = new HUD()
-    }
-
     private setSections(): void {
         // Intro section — near spawn
         const intro = new IntroSection({
@@ -275,28 +268,6 @@ export default class World {
             z: 25,
         })
         this.container.add(contact.container)
-
-        // Wire HUD to zone events for section name display
-        const sectionZones = [
-            { name: 'About Me', x: 0, z: -2 },
-            { name: 'Projects', x: 25, z: 0 },
-            { name: 'Experience', x: 0, z: -25 },
-            { name: 'Skills', x: -25, z: 0 },
-            { name: 'Contact', x: 0, z: 25 },
-        ]
-
-        for (const sz of sectionZones) {
-            // Find matching zone by position
-            for (const zone of this.zones.items) {
-                const dx = Math.abs(zone.position.x - sz.x)
-                const dz = Math.abs(zone.position.z - sz.z)
-                if (dx < 1 && dz < 1) {
-                    zone.on('in', () => this.hud.showSection(sz.name))
-                    zone.on('out', () => this.hud.hideSection())
-                    break
-                }
-            }
-        }
     }
 
     private setRover(): void {
