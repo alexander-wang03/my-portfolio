@@ -22,7 +22,7 @@ import Sounds from './Sounds'
 import IntroSection from './Sections/IntroSection'
 import ProjectsSection from './Sections/ProjectsSection'
 import ExperienceSection from './Sections/ExperienceSection'
-import SkillsSection from './Sections/SkillsSection'
+import AboutSection from './Sections/SkillsSection'
 import ContactSection from './Sections/ContactSection'
 
 import SectionOverlay from '../ui/SectionOverlay'
@@ -108,7 +108,7 @@ export default class World {
         this.terrain = new Terrain({
             size: 200,
             segments: 16,
-            heightScale: 12,
+            heightScale: 6,
         })
         this.container.add(this.terrain.container)
     }
@@ -204,14 +204,10 @@ export default class World {
     }
 
     private setSections(): void {
-        // Intro section — near spawn
+        // Intro section — block letters near spawn
         const intro = new IntroSection({
             objects: this.objects,
-            zones: this.zones,
             terrain: this.terrain,
-            shadows: this.shadows,
-            camera: this.camera,
-            overlay: this.overlay,
             x: 0,
             z: 0,
         })
@@ -244,17 +240,17 @@ export default class World {
         })
         this.container.add(experience.container)
 
-        // Skills section — west
-        const skills = new SkillsSection({
-            objects: this.objects,
+        // About section — west
+        const about = new AboutSection({
             zones: this.zones,
             terrain: this.terrain,
+            shadows: this.shadows,
             camera: this.camera,
             overlay: this.overlay,
             x: -25,
             z: 0,
         })
-        this.container.add(skills.container)
+        this.container.add(about.container)
 
         // Contact section — north (past intro sign)
         const contact = new ContactSection({

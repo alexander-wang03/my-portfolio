@@ -1,139 +1,120 @@
 import * as THREE from 'three'
-import type Objects from '../Objects'
 import type Zones from '../Zones'
 import type Terrain from '../Terrain'
 import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
+import type Shadows from '../Shadows'
 import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
 
-interface Skill {
-    name: string
-    color: string
-}
-
-export interface SkillsSectionOptions {
-    objects: Objects
+export interface AboutSectionOptions {
     zones: Zones
     terrain: Terrain
+    shadows: Shadows
     camera: Camera
     overlay: SectionOverlay
     x: number
     z: number
 }
 
-const SKILLS: Skill[] = [
-    { name: 'C/C++', color: '#659ad2' },
-    { name: 'Python', color: '#ffdd40' },
-    { name: 'MATLAB', color: '#e16737' },
-    { name: 'ROS2', color: '#22314e' },
-    { name: 'PyTorch', color: '#ee4c2c' },
-    { name: 'Linux', color: '#f5a623' },
-    { name: 'AWS', color: '#ff9900' },
-    { name: 'Git', color: '#f05032' },
-]
-
-function createTextTexture(
-    text: string,
-    width: number,
-    height: number,
-    opts: { fontSize?: number; color?: string; bg?: string } = {},
-): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')!
-
-    if (opts.bg) {
-        ctx.fillStyle = opts.bg
-        ctx.fillRect(0, 0, width, height)
-    }
-
-    ctx.fillStyle = opts.color ?? '#ffffff'
-    ctx.font = `bold ${opts.fontSize ?? 48}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(text, width / 2, height / 2)
-
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.needsUpdate = true
-    return texture
-}
-
-export default class SkillsSection {
+export default class AboutSection {
     container: THREE.Object3D
 
-    constructor(options: SkillsSectionOptions) {
+    constructor(options: AboutSectionOptions) {
         this.container = new THREE.Object3D()
 
-        this.createSkillBlocks(options)
+        this.createAboutSign(options)
         this.createZone(options)
     }
 
-    private createSkillBlocks(options: SkillsSectionOptions): void {
+    private createAboutSign(options: AboutSectionOptions): void {
         const metalTex = loadMatcapTexture('metal')
-        const blockSize = 0.5
+        const pillarMat = createMatcapMaterial({
+            matcapTexture: metalTex,
+            color: new THREE.Color('#808080'),
+            indirect: 0,
+        })
 
-        // Arrange in a 2-row grid: 4 columns × 2 rows
-        const cols = 4
-        const spacingX = 2.0
-        const spacingZ = 2.5
+        const px = options.x
+        const pz = options.z
+        const terrainY = options.terrain.getHeightAt(px, pz)
 
-        for (let i = 0; i < SKILLS.length; i++) {
-            const skill = SKILLS[i]
-            const col = i % cols
-            const row = Math.floor(i / cols)
+        // Pillar
+        const pillarHeight = 1.6
+        const pillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.05, pillarHeight, 8),
+            pillarMat,
+        )
 
-            const bx = options.x + (col - (cols - 1) / 2) * spacingX
-            const bz = options.z + (row - 0.5) * spacingZ
-            const terrainY = options.terrain.getHeightAt(bx, bz)
+        // Billboard with tagline
+        const boardWidth = 4.0
+        const boardHeight = 1.4
+        const boardGeo = new THREE.PlaneGeometry(boardWidth, boardHeight)
 
-            // Create textured block
-            const labelTex = createTextTexture(skill.name, 256, 256, {
-                fontSize: 40,
-                color: '#ffffff',
-                bg: skill.color,
-            })
+        const canvas = document.createElement('canvas')
+        canvas.width = 512
+        canvas.height = 192
+        const ctx = canvas.getContext('2d')!
+        ctx.fillStyle = '#1a0e08'
+        ctx.fillRect(0, 0, 512, 192)
 
-            const colorMat = createMatcapMaterial({
-                matcapTexture: metalTex,
-                color: new THREE.Color(skill.color),
-                indirect: 0,
-            })
+        // Title
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillText('About Me', 256, 15)
 
-            const textMat = new THREE.MeshBasicMaterial({
-                map: labelTex,
-            })
-
-            // Box with text on front face, matcap on others
-            const geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize)
-            const mesh = new THREE.Mesh(geo, [
-                colorMat,    // +X
-                colorMat,    // -X
-                colorMat,    // +Y
-                colorMat,    // -Y
-                textMat,     // +Z (front)
-                textMat,     // -Z (back)
-            ])
-
-            options.objects.add({
-                mesh,
-                position: new THREE.Vector3(bx, terrainY + blockSize / 2 + 0.5, bz),
-                mass: 1.0,
-                restitution: 0.4,
-                shadow: { sizeX: 0.6, sizeZ: 0.6 },
-            })
+        // Tagline (wrapped)
+        ctx.fillStyle = '#fccf92'
+        ctx.font = '18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        const tagline = "Engineer, pilot, and creator. I love building robots and getting them in people's hands."
+        const words = tagline.split(' ')
+        let line = ''
+        let y = 65
+        for (const word of words) {
+            const test = line + word + ' '
+            if (ctx.measureText(test).width > 440 && line.length > 0) {
+                ctx.fillText(line.trim(), 256, y)
+                line = word + ' '
+                y += 24
+            } else {
+                line = test
+            }
         }
+        if (line.trim()) ctx.fillText(line.trim(), 256, y)
+
+        // Subtitle
+        ctx.fillStyle = '#d4a574'
+        ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        ctx.fillText('UofT Engineering Science — Robotics', 256, 150)
+
+        const texture = new THREE.CanvasTexture(canvas)
+        texture.needsUpdate = true
+
+        const boardMat = new THREE.MeshBasicMaterial({
+            map: texture,
+            side: THREE.DoubleSide,
+        })
+        const board = new THREE.Mesh(boardGeo, boardMat)
+        board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05
+
+        const signGroup = new THREE.Group()
+        signGroup.add(pillar, board)
+        signGroup.position.set(px, terrainY + pillarHeight / 2, pz)
+        this.container.add(signGroup)
+
+        options.shadows.add(signGroup, { sizeX: boardWidth * 0.8, sizeZ: 0.4, shape: 'box' })
     }
 
-    private createZone(options: SkillsSectionOptions): void {
+    private createZone(options: AboutSectionOptions): void {
         const zone = options.zones.add({
             position: { x: options.x, z: options.z },
             halfExtents: { x: 8, z: 6 },
-            data: { cameraAngle: 'skills' },
+            data: { cameraAngle: 'about' },
         })
 
         zone.on('in', () => {
-            options.camera.angle.set('skills')
+            options.camera.angle.set('about')
             options.overlay.show(this.buildOverlayHTML())
         })
 
@@ -144,11 +125,20 @@ export default class SkillsSection {
     }
 
     private buildOverlayHTML(): string {
-        let html = '<h2>Skills</h2>'
-        html += '<p><strong>Languages:</strong> C/C++, Python, MATLAB, JavaScript, SQL</p>'
-        html += '<p><strong>Tools:</strong> Simulink, Fusion360, Linux, AWS, Git, Jenkins, Bazel</p>'
-        html += '<p><strong>Embedded:</strong> CAN, EtherCAT, GPIO, I2C, SPI, UART, ROS/ROS2, STM32</p>'
-        html += '<p><strong>AI/ML:</strong> PyTorch, TensorFlow, OpenCV, Hugging Face, Scikit-Learn</p>'
-        return html
+        return `
+            <h2>About Me</h2>
+            <div class="project-card">
+                <p>Hi, I'm Alex. I'm an engineer, pilot, and creator with over 4 years of experience. I love building robots and getting them in people's hands.</p>
+            </div>
+            <div class="project-card">
+                <h3>Currently</h3>
+                <p>AI Researcher at <strong>TRAIL Lab</strong>, University of Toronto</p>
+            </div>
+            <div class="project-card">
+                <h3>Education</h3>
+                <p>University of Toronto</p>
+                <p>Engineering Science — Robotics (AI Minor)</p>
+            </div>
+        `
     }
 }
