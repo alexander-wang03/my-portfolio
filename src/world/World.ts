@@ -1,9 +1,10 @@
 import * as THREE from 'three'
+import gsap from 'gsap'
 import type Time from '../engine/Utils/Time'
 import type Sizes from '../engine/Utils/Sizes'
-import type Resources from '../engine/Resources'
 import type Camera from '../engine/Camera'
 import type { GUI } from 'dat.gui'
+import { setRevealFade, setRevealProgress } from './Reveal'
 import Terrain from './Terrain'
 import Environment from './Environment'
 import Controls from './Controls'
@@ -22,7 +23,7 @@ import Sounds from './Sounds'
 import IntroSection from './Sections/IntroSection'
 import ProjectsSection from './Sections/ProjectsSection'
 import ExperienceSection from './Sections/ExperienceSection'
-import AboutSection from './Sections/SkillsSection'
+import AboutSection from './Sections/AboutSection'
 import ContactSection from './Sections/ContactSection'
 
 import SectionOverlay from '../ui/SectionOverlay'
@@ -30,7 +31,6 @@ import SectionOverlay from '../ui/SectionOverlay'
 export interface WorldOptions {
     config: { debug: boolean; touch: boolean }
     debug?: GUI
-    resources: Resources
     time: Time
     sizes: Sizes
     camera: Camera
@@ -38,10 +38,15 @@ export interface WorldOptions {
     renderer: THREE.WebGLRenderer
 }
 
+export interface Reveal {
+    matcapsProgress: number
+    fadeProgress: number
+    go: () => void
+}
+
 export default class World {
     config: WorldOptions['config']
     debug?: GUI
-    resources: Resources
     time: Time
     sizes: Sizes
     camera: Camera
@@ -65,11 +70,11 @@ export default class World {
     rocks!: Rocks
     shadows!: Shadows
     sounds!: Sounds
+    reveal!: Reveal
 
     constructor(options: WorldOptions) {
         this.config = options.config
         this.debug = options.debug
-        this.resources = options.resources
         this.time = options.time
         this.sizes = options.sizes
         this.camera = options.camera
@@ -101,7 +106,50 @@ export default class World {
         this.setDust()
         this.setAmbientDust()
         this.setSounds()
+        this.setReveal()
         onProgress?.(1.0)
+    }
+
+    private setReveal(): void {
+        this.reveal = {
+            matcapsProgress: 0,
+            fadeProgress: 0,
+            go: () => {
+                // The world rises out of the ground, then its shadows and
+                // sign boards fade in behind it.
+                gsap.to(this.reveal, { matcapsProgress: 1, duration: 3, ease: 'none' })
+                gsap.to(this.reveal, { fadeProgress: 1, duration: 2.5, delay: 0.5 })
+
+                // Drop the rover in from higher than a normal respawn
+                this.physics.resetVehicle(6)
+
+                this.sounds.fadeIn()
+            },
+        }
+
+        let previousMatcaps = -1
+        let previousFade = -1
+
+        this.time.on('tick', () => {
+            if (this.reveal.matcapsProgress !== previousMatcaps) {
+                setRevealProgress(this.reveal.matcapsProgress)
+                previousMatcaps = this.reveal.matcapsProgress
+            }
+
+            if (this.reveal.fadeProgress !== previousFade) {
+                setRevealFade(this.reveal.fadeProgress)
+                this.shadows.alpha = this.reveal.fadeProgress
+                this.rover.revealAlpha = this.reveal.fadeProgress
+                previousFade = this.reveal.fadeProgress
+            }
+        })
+
+        if (this.debug) {
+            const folder = this.debug.addFolder('reveal')
+            folder.add(this.reveal, 'matcapsProgress').step(0.001).min(0).max(1)
+            folder.add(this.reveal, 'fadeProgress').step(0.001).min(0).max(1)
+            folder.add(this.reveal, 'go').name('replay reveal')
+        }
     }
 
     private setTerrain(): void {

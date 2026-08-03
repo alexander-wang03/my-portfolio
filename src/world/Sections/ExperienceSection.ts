@@ -7,13 +7,13 @@ import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
 import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
-
-interface Experience {
-    company: string
-    role: string
-    years: string
-    description: string
-}
+import {
+    BOARD_BACKGROUND,
+    BOARD_FONT,
+    createBoardMaterial,
+    createCanvasTexture,
+} from '../Materials/SignBoard'
+import { EXPERIENCES, RESUME_URL } from '../../content/portfolio'
 
 export interface ExperienceSectionOptions {
     objects: Objects
@@ -27,59 +27,7 @@ export interface ExperienceSectionOptions {
     z: number
 }
 
-const EXPERIENCES: Experience[] = [
-    {
-        company: 'SpaceX',
-        role: 'Software Engineering Intern',
-        years: 'May 2025 – Aug 2025',
-        description: 'Designed PLC-based controller architecture for Hardware-in-the-Loop test systems, reducing downtime by 87%.',
-    },
-    {
-        company: 'General Motors',
-        role: 'Software & Controls Intern',
-        years: 'May 2024 – Apr 2025',
-        description: 'Developed thermal control system software and automated SIL testing pipeline for EV propulsion.',
-    },
-    {
-        company: 'aUToronto',
-        role: 'State Estimation Lead',
-        years: 'Sep 2023 – Jun 2025',
-        description: 'Led autonomous vehicle team to back-to-back 1st place finishes at SAE AutoDrive Challenge.',
-    },
-    {
-        company: 'TRAIL Lab',
-        role: 'AI Researcher',
-        years: 'May 2024 – Present',
-        description: 'Developing Bayesian 3D lane detection and 3D hierarchical scene graphs for VLA models.',
-    },
-]
-
-function createTextTexture(
-    text: string,
-    width: number,
-    height: number,
-    opts: { fontSize?: number; color?: string; bg?: string } = {},
-): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')!
-
-    if (opts.bg) {
-        ctx.fillStyle = opts.bg
-        ctx.fillRect(0, 0, width, height)
-    }
-
-    ctx.fillStyle = opts.color ?? '#ffffff'
-    ctx.font = `bold ${opts.fontSize ?? 48}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(text, width / 2, height / 2)
-
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.needsUpdate = true
-    return texture
-}
+const SPACING = 5
 
 export default class ExperienceSection {
     container: THREE.Object3D
@@ -100,12 +48,11 @@ export default class ExperienceSection {
             indirect: 0,
         })
 
-        const spacing = 5
-        const startOffset = -((EXPERIENCES.length - 1) * spacing) / 2
+        const startOffset = -((EXPERIENCES.length - 1) * SPACING) / 2
 
         for (let i = 0; i < EXPERIENCES.length; i++) {
             const exp = EXPERIENCES[i]
-            const px = options.x + startOffset + i * spacing
+            const px = options.x + startOffset + i * SPACING
             const pz = options.z
             const terrainY = options.terrain.getHeightAt(px, pz)
 
@@ -117,31 +64,27 @@ export default class ExperienceSection {
 
             const boardWidth = 3.0
             const boardHeight = 0.9
-            const boardGeo = new THREE.PlaneGeometry(boardWidth, boardHeight)
 
-            const labelCanvas = document.createElement('canvas')
-            labelCanvas.width = 512
-            labelCanvas.height = 128
-            const ctx = labelCanvas.getContext('2d')!
-            ctx.fillStyle = '#1a0e08'
-            ctx.fillRect(0, 0, 512, 128)
-            ctx.fillStyle = '#ffffff'
-            ctx.font = 'bold 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'top'
-            ctx.fillText(exp.company, 256, 15)
-            ctx.font = '28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-            ctx.fillStyle = '#fccf92'
-            ctx.fillText(exp.years, 256, 70)
+            // Company name over the dates
+            const labelTexture = createCanvasTexture(512, 128, (ctx) => {
+                ctx.fillStyle = BOARD_BACKGROUND
+                ctx.fillRect(0, 0, 512, 128)
+                ctx.textAlign = 'center'
+                ctx.textBaseline = 'top'
 
-            const nameTexture = new THREE.CanvasTexture(labelCanvas)
-            nameTexture.needsUpdate = true
+                ctx.fillStyle = '#ffffff'
+                ctx.font = `bold 40px ${BOARD_FONT}`
+                ctx.fillText(exp.company, 256, 15)
 
-            const boardFaceMat = new THREE.MeshBasicMaterial({
-                map: nameTexture,
-                side: THREE.DoubleSide,
+                ctx.fillStyle = '#fccf92'
+                ctx.font = `28px ${BOARD_FONT}`
+                ctx.fillText(exp.years, 256, 70)
             })
-            const board = new THREE.Mesh(boardGeo, boardFaceMat)
+
+            const board = new THREE.Mesh(
+                new THREE.PlaneGeometry(boardWidth, boardHeight),
+                createBoardMaterial(labelTexture),
+            )
             board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05
 
             const signGroup = new THREE.Group()
@@ -155,7 +98,7 @@ export default class ExperienceSection {
     }
 
     private createZone(options: ExperienceSectionOptions): void {
-        const totalWidth = (EXPERIENCES.length - 1) * 5 + 8
+        const totalWidth = (EXPERIENCES.length - 1) * SPACING + 8
         const zone = options.zones.add({
             position: { x: options.x, z: options.z },
             halfExtents: { x: totalWidth / 2 + 3, z: 8 },
@@ -206,7 +149,7 @@ export default class ExperienceSection {
 
     private buildOverlayHTML(): string {
         let html = '<h2>Experience</h2>'
-        html += '<div class="project-card"><a href="/CV.pdf" target="_blank" rel="noopener">View Resume &rarr;</a></div>'
+        html += `<div class="project-card"><a href="${RESUME_URL}" target="_blank" rel="noopener">View Resume &rarr;</a></div>`
         for (const exp of EXPERIENCES) {
             html += `
                 <div class="project-card">

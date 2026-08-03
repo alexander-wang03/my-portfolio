@@ -15,6 +15,8 @@ export default class Rover {
     physics: Physics
     terrain: Terrain
     container: THREE.Object3D
+    /** Shadow multiplier, driven by the reveal animation. */
+    revealAlpha = 0
 
     private bodyGroup!: THREE.Group
     private wheelMeshes: THREE.Mesh[] = []
@@ -284,7 +286,7 @@ export default class Rover {
             // Fade shadow based on height above ground
             const heightAboveGround = pos.y - terrainY
             const shadowAlpha = THREE.MathUtils.clamp(1.0 - (heightAboveGround - 1.0) / 3.0, 0, 1)
-            this.terrain.shadowUniforms.uShadowAlpha.value = shadowAlpha * 0.7
+            this.terrain.shadowUniforms.uShadowAlpha.value = shadowAlpha * 0.7 * this.revealAlpha
 
             // === Antenna spring physics ===
             const accel = this.physics.acceleration

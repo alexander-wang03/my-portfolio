@@ -6,13 +6,8 @@ import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
 import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
-
-interface ContactLink {
-    label: string
-    icon: string
-    url: string
-    color: string
-}
+import { BOARD_BACKGROUND, createBoardMaterial, createTextTexture } from '../Materials/SignBoard'
+import { CONTACT_LINKS } from '../../content/portfolio'
 
 export interface ContactSectionOptions {
     zones: Zones
@@ -25,38 +20,7 @@ export interface ContactSectionOptions {
     z: number
 }
 
-const LINKS: ContactLink[] = [
-    { label: 'GitHub', icon: 'GH', url: 'https://github.com/alexander-wang03', color: '#ffffff' },
-    { label: 'LinkedIn', icon: 'LI', url: 'https://www.linkedin.com/in/alexander-wang03/', color: '#0a66c2' },
-    { label: 'Email', icon: '@', url: 'mailto:alexshuaiwang@gmail.com', color: '#ff9043' },
-]
-
-function createTextTexture(
-    text: string,
-    width: number,
-    height: number,
-    opts: { fontSize?: number; color?: string; bg?: string } = {},
-): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')!
-
-    if (opts.bg) {
-        ctx.fillStyle = opts.bg
-        ctx.fillRect(0, 0, width, height)
-    }
-
-    ctx.fillStyle = opts.color ?? '#ffffff'
-    ctx.font = `bold ${opts.fontSize ?? 48}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(text, width / 2, height / 2)
-
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.needsUpdate = true
-    return texture
-}
+const SPACING = 4
 
 export default class ContactSection {
     container: THREE.Object3D
@@ -69,6 +33,12 @@ export default class ContactSection {
         this.createAreas(options)
     }
 
+    /** X position of the sign for link `index`, laid out around the centre. */
+    private signX(options: ContactSectionOptions, index: number): number {
+        const startOffset = -((CONTACT_LINKS.length - 1) * SPACING) / 2
+        return options.x + startOffset + index * SPACING
+    }
+
     private createSignposts(options: ContactSectionOptions): void {
         const metalTex = loadMatcapTexture('metal')
         const pillarMat = createMatcapMaterial({
@@ -77,12 +47,9 @@ export default class ContactSection {
             indirect: 0,
         })
 
-        const spacing = 4
-        const startOffset = -((LINKS.length - 1) * spacing) / 2
-
-        for (let i = 0; i < LINKS.length; i++) {
-            const link = LINKS[i]
-            const px = options.x + startOffset + i * spacing
+        for (let i = 0; i < CONTACT_LINKS.length; i++) {
+            const link = CONTACT_LINKS[i]
+            const px = this.signX(options, i)
             const pz = options.z
             const terrainY = options.terrain.getHeightAt(px, pz)
 
@@ -96,11 +63,11 @@ export default class ContactSection {
             const iconTex = createTextTexture(link.icon, 256, 256, {
                 fontSize: 100,
                 color: link.color,
-                bg: '#1a0e08',
+                bg: BOARD_BACKGROUND,
             })
             const iconBoard = new THREE.Mesh(
                 new THREE.PlaneGeometry(1.2, 1.2),
-                new THREE.MeshBasicMaterial({ map: iconTex, side: THREE.DoubleSide }),
+                createBoardMaterial(iconTex),
             )
             iconBoard.position.y = pillarHeight / 2 + 0.65
             iconBoard.rotation.y = Math.PI
@@ -109,11 +76,11 @@ export default class ContactSection {
             const labelTex = createTextTexture(link.label, 256, 64, {
                 fontSize: 36,
                 color: '#ffffff',
-                bg: '#1a0e08',
+                bg: BOARD_BACKGROUND,
             })
             const labelBoard = new THREE.Mesh(
                 new THREE.PlaneGeometry(1.8, 0.4),
-                new THREE.MeshBasicMaterial({ map: labelTex, side: THREE.DoubleSide }),
+                createBoardMaterial(labelTex),
             )
             labelBoard.position.y = pillarHeight / 2 + 0.05
             labelBoard.rotation.y = Math.PI
@@ -129,7 +96,7 @@ export default class ContactSection {
     }
 
     private createZone(options: ContactSectionOptions): void {
-        const totalWidth = (LINKS.length - 1) * 4 + 6
+        const totalWidth = (CONTACT_LINKS.length - 1) * SPACING + 6
         const zone = options.zones.add({
             position: { x: options.x, z: options.z },
             halfExtents: { x: totalWidth / 2 + 3, z: 7 },
@@ -148,16 +115,11 @@ export default class ContactSection {
     }
 
     private createAreas(options: ContactSectionOptions): void {
-        const spacing = 4
-        const startOffset = -((LINKS.length - 1) * spacing) / 2
-
-        for (let i = 0; i < LINKS.length; i++) {
-            const link = LINKS[i]
-            const ax = options.x + startOffset + i * spacing
-            const az = options.z
+        for (let i = 0; i < CONTACT_LINKS.length; i++) {
+            const link = CONTACT_LINKS[i]
 
             const area = options.areas.add({
-                position: { x: ax, z: az },
+                position: { x: this.signX(options, i), z: options.z },
                 halfExtents: { x: 1.5, z: 1.5 },
                 testCar: true,
                 active: true,
@@ -175,11 +137,12 @@ export default class ContactSection {
 
     private buildOverlayHTML(): string {
         let html = '<h2>Contact</h2>'
-        for (const link of LINKS) {
+        for (const link of CONTACT_LINKS) {
+            const isEmail = link.url.startsWith('mailto:')
             html += `
                 <div class="project-card contact-card">
                     <h3>${link.label}</h3>
-                    <a href="${link.url}" ${link.url.startsWith('mailto:') ? '' : 'target="_blank" rel="noopener"'}>${link.label === 'Email' ? 'Send Email' : 'Visit'} &rarr;</a>
+                    <a href="${link.url}" ${isEmail ? '' : 'target="_blank" rel="noopener"'}>${isEmail ? 'Send Email' : 'Visit'} &rarr;</a>
                 </div>
             `
         }

@@ -102,39 +102,14 @@ export default class Sounds {
         this.windSource.start()
     }
 
-    playBeep(): void {
+    /** Ramp the master volume up as the world reveals itself. */
+    fadeIn(duration = 2): void {
         if (!this.ctx || !this.masterGain || this.muted) return
 
-        const osc = this.ctx.createOscillator()
-        osc.type = 'sine'
-        osc.frequency.value = 880
-
-        const gain = this.ctx.createGain()
-        gain.gain.value = 0.1
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15)
-
-        osc.connect(gain)
-        gain.connect(this.masterGain)
-        osc.start()
-        osc.stop(this.ctx.currentTime + 0.15)
-    }
-
-    playThud(): void {
-        if (!this.ctx || !this.masterGain || this.muted) return
-
-        const osc = this.ctx.createOscillator()
-        osc.type = 'sine'
-        osc.frequency.value = 60
-        osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.1)
-
-        const gain = this.ctx.createGain()
-        gain.gain.value = 0.15
-        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2)
-
-        osc.connect(gain)
-        gain.connect(this.masterGain)
-        osc.start()
-        osc.stop(this.ctx.currentTime + 0.2)
+        const now = this.ctx.currentTime
+        this.masterGain.gain.cancelScheduledValues(now)
+        this.masterGain.gain.setValueAtTime(0, now)
+        this.masterGain.gain.linearRampToValueAtTime(1, now + duration)
     }
 
     private update(): void {

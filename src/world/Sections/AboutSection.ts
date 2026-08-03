@@ -5,6 +5,14 @@ import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
 import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
+import {
+    BOARD_BACKGROUND,
+    BOARD_FONT,
+    createBoardMaterial,
+    createCanvasTexture,
+    fillWrappedText,
+} from '../Materials/SignBoard'
+import { ABOUT } from '../../content/portfolio'
 
 export interface AboutSectionOptions {
     zones: Zones
@@ -45,57 +53,32 @@ export default class AboutSection {
             pillarMat,
         )
 
-        // Billboard with tagline
+        // Billboard: heading, wrapped tagline, subtitle
         const boardWidth = 4.0
         const boardHeight = 1.4
-        const boardGeo = new THREE.PlaneGeometry(boardWidth, boardHeight)
+        const texture = createCanvasTexture(512, 192, (ctx) => {
+            ctx.fillStyle = BOARD_BACKGROUND
+            ctx.fillRect(0, 0, 512, 192)
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'top'
 
-        const canvas = document.createElement('canvas')
-        canvas.width = 512
-        canvas.height = 192
-        const ctx = canvas.getContext('2d')!
-        ctx.fillStyle = '#1a0e08'
-        ctx.fillRect(0, 0, 512, 192)
+            ctx.fillStyle = '#ffffff'
+            ctx.font = `bold 32px ${BOARD_FONT}`
+            ctx.fillText(ABOUT.heading, 256, 15)
 
-        // Title
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'top'
-        ctx.fillText('About Me', 256, 15)
+            ctx.fillStyle = '#fccf92'
+            ctx.font = `18px ${BOARD_FONT}`
+            fillWrappedText(ctx, ABOUT.tagline, 256, 65, 440, 24)
 
-        // Tagline (wrapped)
-        ctx.fillStyle = '#fccf92'
-        ctx.font = '18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        const tagline = "Engineer, pilot, and creator. I love building robots and getting them in people's hands."
-        const words = tagline.split(' ')
-        let line = ''
-        let y = 65
-        for (const word of words) {
-            const test = line + word + ' '
-            if (ctx.measureText(test).width > 440 && line.length > 0) {
-                ctx.fillText(line.trim(), 256, y)
-                line = word + ' '
-                y += 24
-            } else {
-                line = test
-            }
-        }
-        if (line.trim()) ctx.fillText(line.trim(), 256, y)
-
-        // Subtitle
-        ctx.fillStyle = '#d4a574'
-        ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        ctx.fillText('UofT Engineering Science — Robotics', 256, 150)
-
-        const texture = new THREE.CanvasTexture(canvas)
-        texture.needsUpdate = true
-
-        const boardMat = new THREE.MeshBasicMaterial({
-            map: texture,
-            side: THREE.DoubleSide,
+            ctx.fillStyle = '#d4a574'
+            ctx.font = `16px ${BOARD_FONT}`
+            ctx.fillText(ABOUT.subtitle, 256, 150)
         })
-        const board = new THREE.Mesh(boardGeo, boardMat)
+
+        const board = new THREE.Mesh(
+            new THREE.PlaneGeometry(boardWidth, boardHeight),
+            createBoardMaterial(texture),
+        )
         board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05
 
         const signGroup = new THREE.Group()
@@ -125,19 +108,20 @@ export default class AboutSection {
     }
 
     private buildOverlayHTML(): string {
+        const education = ABOUT.education.lines.map((line) => `<p>${line}</p>`).join('')
+
         return `
-            <h2>About Me</h2>
+            <h2>${ABOUT.heading}</h2>
             <div class="project-card">
-                <p>Hi, I'm Alex. I'm an engineer, pilot, and creator with over 4 years of experience. I love building robots and getting them in people's hands.</p>
+                <p>${ABOUT.intro}</p>
             </div>
             <div class="project-card">
-                <h3>Currently</h3>
-                <p>AI Researcher at <strong>TRAIL Lab</strong>, University of Toronto</p>
+                <h3>${ABOUT.current.heading}</h3>
+                <p>${ABOUT.current.body}</p>
             </div>
             <div class="project-card">
-                <h3>Education</h3>
-                <p>University of Toronto</p>
-                <p>Engineering Science — Robotics (AI Minor)</p>
+                <h3>${ABOUT.education.heading}</h3>
+                ${education}
             </div>
         `
     }

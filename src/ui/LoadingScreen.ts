@@ -1,5 +1,6 @@
 import gsap from 'gsap'
 import EventEmitter from '../engine/Utils/EventEmitter'
+import { FULL_NAME, TAGLINE } from '../content/portfolio'
 
 export default class LoadingScreen extends EventEmitter {
     element: HTMLDivElement
@@ -16,12 +17,12 @@ export default class LoadingScreen extends EventEmitter {
 
         const title = document.createElement('h1')
         title.className = 'loading-title'
-        title.textContent = 'ALEXANDER WANG'
+        title.textContent = FULL_NAME
         this.element.appendChild(title)
 
         const subtitle = document.createElement('p')
         subtitle.className = 'loading-subtitle'
-        subtitle.textContent = 'Portfolio'
+        subtitle.textContent = TAGLINE
         this.element.appendChild(subtitle)
 
         this.progressBar = document.createElement('div')

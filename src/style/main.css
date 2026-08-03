@@ -175,10 +175,6 @@ body {
     color: #fccf92;
 }
 
-.has-cursor-pointer {
-    cursor: pointer;
-}
-
 @media (max-width: 600px) {
     .section-overlay {
         width: 280px;
@@ -188,24 +184,6 @@ body {
     .section-overlay.visible {
         right: 12px;
     }
-}
-
-/* ── Skills Grid ──────────────────────────────────────────────────── */
-
-.skills-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.skill-tag {
-    padding: 8px 14px;
-    border: 1px solid rgba(255, 144, 67, 0.3);
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.85);
-    background: rgba(255, 255, 255, 0.05);
 }
 
 .card-subtitle {

@@ -5,6 +5,7 @@ import fontData from 'three/examples/fonts/helvetiker_bold.typeface.json'
 import type Objects from '../Objects'
 import type Terrain from '../Terrain'
 import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
+import { BLOCK_LETTERS_NAME } from '../../content/portfolio'
 
 export interface BlockLettersOptions {
     objects: Objects
@@ -27,7 +28,7 @@ export default class BlockLetters {
         const font = new Font(fontData as any)
         const metalTex = loadMatcapTexture('metal')
 
-        const text = 'ALEX WANG'
+        const text = BLOCK_LETTERS_NAME
         const letterSize = 1.6
         const letterDepth = 0.8
         const spacing = 2.2 // spacing between letter origins

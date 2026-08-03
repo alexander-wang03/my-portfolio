@@ -7,7 +7,6 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import Sizes from './Utils/Sizes'
 import Time from './Utils/Time'
-import Resources from './Resources'
 import Camera from './Camera'
 import World from '../world/World'
 import LoadingScreen from '../ui/LoadingScreen'
@@ -97,7 +96,6 @@ export default class Application {
     canvas: HTMLCanvasElement
     time: Time
     sizes: Sizes
-    resources: Resources
     config!: { debug: boolean; touch: boolean }
     debug?: dat.GUI
     scene!: THREE.Scene
@@ -112,7 +110,6 @@ export default class Application {
 
         this.time = new Time()
         this.sizes = new Sizes()
-        this.resources = new Resources()
 
         this.setConfig()
         this.setDebug()
@@ -137,6 +134,7 @@ export default class Application {
 
     private onStart(): void {
         this.camera.reveal()
+        this.world.reveal.go()
         this.world.controls.enabled = true
     }
 
@@ -239,7 +237,6 @@ export default class Application {
         this.world = new World({
             config: this.config,
             debug: this.debug,
-            resources: this.resources,
             time: this.time,
             sizes: this.sizes,
             camera: this.camera,

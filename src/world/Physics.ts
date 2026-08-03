@@ -419,8 +419,9 @@ export default class Physics {
         }
     }
 
-    resetVehicle(): void {
-        const spawnHeight = this.terrain.getHeightAt(0, 0) + 3
+    /** Drop the rover back at spawn. The reveal uses a taller drop for effect. */
+    resetVehicle(dropHeight = 3): void {
+        const spawnHeight = this.terrain.getHeightAt(0, 0) + dropHeight
         this.chassisBody.setTranslation({ x: 0, y: spawnHeight, z: 0 }, true)
         this.chassisBody.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
         this.chassisBody.setLinvel({ x: 0, y: 0, z: 0 }, true)

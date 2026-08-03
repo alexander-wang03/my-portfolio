@@ -24,6 +24,8 @@ export interface ShadowsOptions {
 
 export default class Shadows {
     items: ShadowItem[] = []
+    /** Global multiplier, driven by the reveal animation. */
+    alpha = 0
     private terrain: Terrain
 
     constructor(options: ShadowsOptions) {
@@ -70,7 +72,7 @@ export default class Shadows {
             const heightFade = 1 - Math.min(heightAbove / maxHeight, 1)
 
             data[base1 + 0] = euler.y
-            data[base1 + 1] = item.alpha * heightFade * heightFade
+            data[base1 + 1] = item.alpha * heightFade * heightFade * this.alpha
             data[base1 + 2] = item.shape === 'box' ? 1.0 : 0.0
             data[base1 + 3] = 0
         }

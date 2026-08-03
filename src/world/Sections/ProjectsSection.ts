@@ -6,12 +6,8 @@ import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
 import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
-
-interface Project {
-    title: string
-    description: string
-    url: string
-}
+import { BOARD_BACKGROUND, createBoardMaterial, createTextTexture } from '../Materials/SignBoard'
+import { PROJECTS } from '../../content/portfolio'
 
 export interface ProjectsSectionOptions {
     zones: Zones
@@ -24,56 +20,7 @@ export interface ProjectsSectionOptions {
     z: number
 }
 
-const PROJECTS: Project[] = [
-    {
-        title: 'TARS-AI',
-        description: 'Co-founded an open-source robotics community recreating the robot TARS from Interstellar — 1000+ members.',
-        url: 'https://github.com/TARS-AI-Community/TARS-AI',
-    },
-    {
-        title: 'BoreasLane',
-        description: 'First publicly available 3D winter condition lane dataset for autonomous vehicles.',
-        url: 'https://www.trailab.utias.utoronto.ca/',
-    },
-    {
-        title: 'aUToronto',
-        description: 'C++ multi-sensor fusion for autonomous vehicle state estimation — back-to-back 1st place at SAE AutoDrive.',
-        url: 'https://www.autodrive.utoronto.ca/',
-    },
-    {
-        title: 'SynthBoard',
-        description: 'Audio synthesizer with 4x4 button interface, RGB LEDs, and 8 knobs for real-time waveform manipulation.',
-        url: 'https://github.com/alexander-wang03/SynthBoard',
-    },
-]
-
-/** Utility: render text onto a CanvasTexture */
-function createTextTexture(
-    text: string,
-    width: number,
-    height: number,
-    opts: { fontSize?: number; color?: string; bg?: string } = {},
-): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')!
-
-    if (opts.bg) {
-        ctx.fillStyle = opts.bg
-        ctx.fillRect(0, 0, width, height)
-    }
-
-    ctx.fillStyle = opts.color ?? '#ffffff'
-    ctx.font = `bold ${opts.fontSize ?? 48}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(text, width / 2, height / 2)
-
-    const texture = new THREE.CanvasTexture(canvas)
-    texture.needsUpdate = true
-    return texture
-}
+const SPACING = 4.5
 
 export default class ProjectsSection {
     container: THREE.Object3D
@@ -86,25 +33,23 @@ export default class ProjectsSection {
         this.createAreas(options)
     }
 
+    /** X position of the sign for project `index`, laid out around the centre. */
+    private signX(options: ProjectsSectionOptions, index: number): number {
+        const startOffset = -((PROJECTS.length - 1) * SPACING) / 2
+        return options.x + startOffset + index * SPACING
+    }
+
     private createSignposts(options: ProjectsSectionOptions): void {
         const metalTex = loadMatcapTexture('metal')
-        const boardMat = createMatcapMaterial({
-            matcapTexture: metalTex,
-            color: new THREE.Color('#d0d0d8'),
-            indirect: 0,
-        })
         const pillarMat = createMatcapMaterial({
             matcapTexture: metalTex,
             color: new THREE.Color('#808080'),
             indirect: 0,
         })
 
-        const spacing = 4.5
-        const startOffset = -((PROJECTS.length - 1) * spacing) / 2
-
         for (let i = 0; i < PROJECTS.length; i++) {
             const project = PROJECTS[i]
-            const px = options.x + startOffset + i * spacing
+            const px = this.signX(options, i)
             const pz = options.z
             const terrainY = options.terrain.getHeightAt(px, pz)
 
@@ -118,17 +63,15 @@ export default class ProjectsSection {
             // Board with project name (flat plane, double-sided)
             const boardWidth = 2.5
             const boardHeight = 0.8
-            const boardGeo = new THREE.PlaneGeometry(boardWidth, boardHeight)
             const nameTexture = createTextTexture(project.title, 512, 128, {
                 fontSize: 56,
                 color: '#ffffff',
-                bg: '#1a0e08',
+                bg: BOARD_BACKGROUND,
             })
-            const boardFaceMat = new THREE.MeshBasicMaterial({
-                map: nameTexture,
-                side: THREE.DoubleSide,
-            })
-            const board = new THREE.Mesh(boardGeo, boardFaceMat)
+            const board = new THREE.Mesh(
+                new THREE.PlaneGeometry(boardWidth, boardHeight),
+                createBoardMaterial(nameTexture),
+            )
             board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05
 
             const signGroup = new THREE.Group()
@@ -142,7 +85,7 @@ export default class ProjectsSection {
     }
 
     private createZone(options: ProjectsSectionOptions): void {
-        const totalWidth = (PROJECTS.length - 1) * 4.5 + 6
+        const totalWidth = (PROJECTS.length - 1) * SPACING + 6
         const zone = options.zones.add({
             position: { x: options.x, z: options.z },
             halfExtents: { x: totalWidth / 2 + 3, z: 8 },
@@ -161,16 +104,11 @@ export default class ProjectsSection {
     }
 
     private createAreas(options: ProjectsSectionOptions): void {
-        const spacing = 4.5
-        const startOffset = -((PROJECTS.length - 1) * spacing) / 2
-
         for (let i = 0; i < PROJECTS.length; i++) {
             const project = PROJECTS[i]
-            const ax = options.x + startOffset + i * spacing
-            const az = options.z
 
             const area = options.areas.add({
-                position: { x: ax, z: az },
+                position: { x: this.signX(options, i), z: options.z },
                 halfExtents: { x: 1.8, z: 1.8 },
                 testCar: true,
                 active: true,

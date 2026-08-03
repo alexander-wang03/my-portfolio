@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import vertexShader from '../../shaders/matcap/vertex.glsl'
 import fragmentShader from '../../shaders/matcap/fragment.glsl'
+import { registerRevealShader } from '../Reveal'
 
 export interface MatcapOptions {
     matcapTexture: THREE.Texture
@@ -23,7 +24,7 @@ export function createMatcapMaterial(options: MatcapOptions): THREE.ShaderMateri
     const edgeFade = options.edgeFade ?? 0
     const indirect = options.indirect ?? 1
 
-    return new THREE.ShaderMaterial({
+    const material = new THREE.ShaderMaterial({
         vertexShader,
         fragmentShader,
         lights: false,
@@ -33,6 +34,7 @@ export function createMatcapMaterial(options: MatcapOptions): THREE.ShaderMateri
             diffuse: { value: options.color ?? new THREE.Color(1, 1, 1) },
             opacity: { value: 1.0 },
             matcap: { value: options.matcapTexture },
+            uRevealProgress: { value: 0 },
             uIndirectDistanceAmplitude: { value: INDIRECT_DEFAULTS.distanceAmplitude },
             uIndirectDistanceStrength: { value: INDIRECT_DEFAULTS.distanceStrength * indirect },
             uIndirectDistancePower: { value: INDIRECT_DEFAULTS.distancePower },
@@ -43,6 +45,10 @@ export function createMatcapMaterial(options: MatcapOptions): THREE.ShaderMateri
             uEdgeFade: { value: edgeFade },
         },
     })
+
+    registerRevealShader(material)
+
+    return material
 }
 
 const textureLoader = new THREE.TextureLoader()
