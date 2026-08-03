@@ -12,6 +12,8 @@ export interface ObjectAddOptions {
     colliderDesc?: RAPIER.ColliderDesc
     restitution?: number
     useConvexHull?: boolean
+    /** Give the convex hull a flat base — see `pointsWithFlatBase`. */
+    flatBase?: boolean
     shadow?: { sizeX: number; sizeZ: number; shape?: 'ellipse' | 'box' }
     startAsleep?: boolean
 }
@@ -77,7 +79,9 @@ export default class Objects {
         if (!colliderDesc) {
             if (options.useConvexHull && mesh instanceof THREE.Mesh && mesh.geometry) {
                 // Convex hull from geometry vertices — fits organic shapes much better
-                const points = new Float32Array(mesh.geometry.attributes.position.array)
+                const points = options.flatBase
+                    ? this.pointsWithFlatBase(mesh.geometry)
+                    : new Float32Array(mesh.geometry.attributes.position.array)
                 const hull = RAPIER.ColliderDesc.convexHull(points)
                 colliderDesc = hull ?? this.cuboidFromGeometry(mesh)
             } else if (mesh instanceof THREE.Mesh && mesh.geometry) {
@@ -107,6 +111,35 @@ export default class Objects {
         }
 
         return item
+    }
+
+    /**
+     * Geometry vertices plus the four bottom corners of the bounding box, so
+     * the resulting convex hull gains a flat rectangular base at the lowest
+     * point of the shape.
+     *
+     * Glyphs with rounded feet (G, O, S) otherwise end in a curve, so the hull
+     * touches the ground along a tangent line and rolls over on any incline —
+     * while the flat-footed letters beside it stand fine. The silhouette above
+     * the base is untouched.
+     */
+    private pointsWithFlatBase(geometry: THREE.BufferGeometry): Float32Array {
+        geometry.computeBoundingBox()
+        const bb = geometry.boundingBox!
+
+        const source = geometry.attributes.position.array
+        const points = new Float32Array(source.length + 4 * 3)
+        points.set(source)
+
+        const corners = [
+            [bb.min.x, bb.min.y, bb.min.z],
+            [bb.max.x, bb.min.y, bb.min.z],
+            [bb.min.x, bb.min.y, bb.max.z],
+            [bb.max.x, bb.min.y, bb.max.z],
+        ]
+        corners.forEach((corner, i) => points.set(corner, source.length + i * 3))
+
+        return points
     }
 
     private cuboidFromGeometry(mesh: THREE.Mesh): RAPIER.ColliderDesc {

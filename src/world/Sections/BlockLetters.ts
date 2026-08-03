@@ -16,6 +16,16 @@ export interface BlockLettersOptions {
 
 const LETTER_COLOR = '#ffffff'
 
+/** Uniform gap between adjacent letters, and the extra gap a space adds. */
+const TRACKING = 0.55
+const WORD_GAP = 1.35
+
+interface Glyph {
+    geo: TextGeometry
+    width: number
+    halfHeight: number
+}
+
 export default class BlockLetters {
     container: THREE.Object3D
 
@@ -31,22 +41,13 @@ export default class BlockLetters {
         const text = BLOCK_LETTERS_NAME
         const letterSize = 1.6
         const letterDepth = 0.8
-        const spacing = 2.2 // spacing between letter origins
 
-        // Compute total width for centering
-        const totalLetters = text.replace(/ /g, '').length
-        const totalSpaces = (text.match(/ /g) || []).length
-        const totalWidth = totalLetters * spacing + totalSpaces * spacing * 0.6
-
-        let xOffset = -totalWidth / 2
-
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i]
-
-            if (char === ' ') {
-                xOffset += spacing * 0.6
-                continue
-            }
+        // Measure every glyph before laying any out, so each letter can advance
+        // by its own width. Advancing by a fixed step instead leaves a gap of
+        // (step - glyphWidth), which varies with the glyph: a narrow N opens a
+        // hole before the next letter while a wide W nearly touches it.
+        const glyphs: (Glyph | null)[] = [...text].map((char) => {
+            if (char === ' ') return null
 
             const geo = new TextGeometry(char, {
                 font,
@@ -56,39 +57,61 @@ export default class BlockLetters {
                 bevelEnabled: false,
             })
 
-            // Center the geometry so physics body aligns with visual
             geo.computeBoundingBox()
             const bbox = geo.boundingBox!
-            const cx = (bbox.max.x + bbox.min.x) / 2
-            const cy = (bbox.max.y + bbox.min.y) / 2
-            const cz = (bbox.max.z + bbox.min.z) / 2
-            const halfHeight = (bbox.max.y - bbox.min.y) / 2
-            const halfWidth = (bbox.max.x - bbox.min.x) / 2
-            geo.translate(-cx, -cy, -cz)
 
-            const mat = createMatcapMaterial({
-                matcapTexture: metalTex,
-                color: new THREE.Color(LETTER_COLOR),
-                indirect: 0,
-            })
+            // Center the geometry so the physics body aligns with the visual
+            geo.translate(
+                -(bbox.max.x + bbox.min.x) / 2,
+                -(bbox.max.y + bbox.min.y) / 2,
+                -(bbox.max.z + bbox.min.z) / 2,
+            )
 
-            const mesh = new THREE.Mesh(geo, mat)
+            return {
+                geo,
+                width: bbox.max.x - bbox.min.x,
+                halfHeight: (bbox.max.y - bbox.min.y) / 2,
+            }
+        })
 
-            const px = options.x + xOffset + halfWidth
-            const pz = options.z - 8 // Behind the rover spawn
-            const terrainY = options.terrain.getHeightAt(px, pz)
-            const py = terrainY + halfHeight + 0.3 // Sit above ground
+        const advance = (glyph: Glyph | null) =>
+            glyph ? glyph.width + TRACKING : WORD_GAP
 
-            options.objects.add({
-                mesh,
-                position: new THREE.Vector3(px, py, pz),
-                mass: 3.0,
-                restitution: 0.2,
-                useConvexHull: true,
-                shadow: { sizeX: 1.92, sizeZ: 1.2 },
-            })
+        // The tracking trailing the final letter is not part of the visible width
+        const totalWidth = glyphs.reduce((sum, glyph) => sum + advance(glyph), 0) - TRACKING
 
-            xOffset += spacing
+        let xOffset = -totalWidth / 2
+
+        for (const glyph of glyphs) {
+            if (glyph) {
+                const px = options.x + xOffset + glyph.width / 2
+                const pz = options.z - 8 // Behind the rover spawn
+                const terrainY = options.terrain.getHeightAt(px, pz)
+                const py = terrainY + glyph.halfHeight + 0.3 // Sit above ground
+
+                const mesh = new THREE.Mesh(
+                    glyph.geo,
+                    createMatcapMaterial({
+                        matcapTexture: metalTex,
+                        color: new THREE.Color(LETTER_COLOR),
+                        indirect: 0,
+                    }),
+                )
+
+                options.objects.add({
+                    mesh,
+                    position: new THREE.Vector3(px, py, pz),
+                    mass: 3.0,
+                    restitution: 0.2,
+                    useConvexHull: true,
+                    flatBase: true,
+                    // Track the glyph rather than a fixed size, so neighbouring
+                    // shadows do not bleed into each other at this spacing
+                    shadow: { sizeX: glyph.width * 1.2, sizeZ: 1.2 },
+                })
+            }
+
+            xOffset += advance(glyph)
         }
     }
 }
