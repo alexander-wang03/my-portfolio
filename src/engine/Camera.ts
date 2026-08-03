@@ -81,14 +81,26 @@ export default class Camera {
             this.debugFolder = this.debug.addFolder('camera')
         }
 
-        // Initialize angle (Y-up: camera looks from above-behind)
+        // Direction from the camera's target out to the camera itself (Y-up).
+        //
+        // Kept deliberately close together: every section sits within ~8° of
+        // default's bearing, so entering one nudges the view rather than
+        // swinging the world around, which reads as motion sickness. Sign
+        // boards all face +Z, so every bearing stays on the +X/+Z side to
+        // view them front-on.
+        //
+        // Bearing is measured off +Z, which is the direction the sign boards
+        // face — so 0° would be dead-on and 90° edge-on. These sit at 20–30°:
+        // angled enough to keep depth in the shot, square enough to read.
+        //
+        //                                    elevation   bearing
         this.angle = {
             items: {
-                default: new THREE.Vector3(1.135, 1.15, 1.45),
-                projects: new THREE.Vector3(0.38, 1.63, 1.4),
-                experience: new THREE.Vector3(-0.9, 1.5, 1.3),
-                about: new THREE.Vector3(1.5, 1.3, -0.6),
-                contact: new THREE.Vector3(0.6, 1.6, -1.2),
+                default: new THREE.Vector3(0.920, 1.150, 1.594), //  32°   30°
+                projects: new THREE.Vector3(0.643, 1.085, 1.766), //  30°   20°
+                experience: new THREE.Vector3(0.806, 0.883, 1.811), //  24°   24°
+                about: new THREE.Vector3(0.704, 1.085, 1.742), //  30°   22°
+                contact: new THREE.Vector3(0.772, 1.052, 1.734), //  29°   24°
             },
             value: new THREE.Vector3(),
             set: () => {},
@@ -96,9 +108,18 @@ export default class Camera {
         this.angle.value.copy(this.angle.items.default)
         this.angle.set = (name: string) => {
             const target = this.angle.items[name]
-            if (target) {
-                gsap.to(this.angle.value, { ...target, duration: 2, ease: 'power1.inOut' })
-            }
+            if (!target) return
+
+            gsap.to(this.angle.value, {
+                x: target.x,
+                y: target.y,
+                z: target.z,
+                duration: 2.5,
+                ease: 'sine.inOut',
+                // Retarget the in-flight tween instead of racing it — clipping
+                // a zone edge would otherwise leave two tweens fighting.
+                overwrite: true,
+            })
         }
 
         // Initialize zoom

@@ -70,7 +70,6 @@ export default class ContactSection {
                 createBoardMaterial(iconTex),
             )
             iconBoard.position.y = pillarHeight / 2 + 0.65
-            iconBoard.rotation.y = Math.PI
 
             // Label board below icon (flat plane, double-sided)
             const labelTex = createTextTexture(link.label, 256, 64, {
@@ -83,7 +82,6 @@ export default class ContactSection {
                 createBoardMaterial(labelTex),
             )
             labelBoard.position.y = pillarHeight / 2 + 0.05
-            labelBoard.rotation.y = Math.PI
 
             const signGroup = new THREE.Group()
             signGroup.add(pillar, iconBoard, labelBoard)
