@@ -72,6 +72,11 @@ export default class World {
     sounds!: Sounds
     reveal!: Reveal
 
+    /** Camera tracks the rover, except while it is dropping in on reveal. */
+    private followRover = true
+    /** Resume following anyway if the rover never reports a clean landing. */
+    private followDeadline = 0
+
     constructor(options: WorldOptions) {
         this.config = options.config
         this.debug = options.debug
@@ -119,6 +124,12 @@ export default class World {
                 // sign boards fade in behind it.
                 gsap.to(this.reveal, { matcapsProgress: 1, duration: 3, ease: 'none' })
                 gsap.to(this.reveal, { fadeProgress: 1, duration: 2.5, delay: 0.5 })
+
+                // Hold the camera on the spot the rover will land on. Following
+                // it through the air whips the camera up and back down again.
+                this.followRover = false
+                this.followDeadline = this.time.elapsed + 4000
+                this.camera.target.set(0, this.terrain.getHeightAt(0, 0) + 0.5, 0)
 
                 // Drop the rover in from higher than a normal respawn
                 this.physics.resetVehicle(6)
@@ -185,6 +196,12 @@ export default class World {
         this.container.add(this.physics.debugContainer)
 
         this.time.on('tick', () => {
+            if (!this.followRover) {
+                const landed = this.physics.wheelGrounded.some(Boolean)
+                if (!landed && this.time.elapsed < this.followDeadline) return
+                this.followRover = true
+            }
+
             this.camera.target.copy(this.physics.chassisPosition)
         })
     }

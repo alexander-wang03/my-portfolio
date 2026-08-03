@@ -59,13 +59,21 @@ export default class LoadingScreen extends EventEmitter {
 
     private hide(): void {
         this.ready = false
+
+        // Start the reveal on the click rather than after the fade — waiting
+        // leaves the player staring at a terrain whose objects are all still
+        // buried, then popping them in at once.
+        this.trigger('start')
+
+        // Stop the fading overlay swallowing clicks meant for the world
+        this.element.style.pointerEvents = 'none'
+
         gsap.to(this.element, {
             opacity: 0,
-            duration: 1.5,
+            duration: 0.8,
             ease: 'power2.inOut',
             onComplete: () => {
                 this.element.remove()
-                this.trigger('start')
             },
         })
     }

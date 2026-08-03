@@ -23,7 +23,10 @@ void main() {
     if (uRevealProgress > 0.999) {
         buried = 0.0;
     }
-    worldPos.y -= buried * 12.0;
+    // 8 units clears the tallest object (~3 above the surface) with margin,
+    // without burying things so deep that they spend most of the animation
+    // out of sight below ground.
+    worldPos.y -= buried * 8.0;
 
     vWorldPosition = worldPos.xyz;
 
