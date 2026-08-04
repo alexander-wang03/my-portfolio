@@ -109,6 +109,10 @@ function createPillarGeometry(rand: () => number): THREE.BufferGeometry {
 // Section centers and spawn area to avoid placing rocks on top of
 const EXCLUSION_ZONES = [
     { x: 0, z: 0, r: 8 },     // Intro/spawn
+    // Control legend. Its far corners sit ~11 from the origin, outside the
+    // spawn clearing, and this radius also covers the biggest boulder (~3.2)
+    // being centred just past the edge and overhanging the panel.
+    { x: 0, z: 7, r: 9.5 },
     { x: 25, z: 0, r: 12 },   // Projects
     { x: 0, z: -25, r: 12 },  // Experience
     { x: -25, z: 0, r: 10 },  // Skills

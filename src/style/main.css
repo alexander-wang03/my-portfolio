@@ -252,11 +252,25 @@ body {
     justify-content: center;
     outline: none;
     -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
+        box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .touch-btn.active {
-    background: rgba(255, 255, 255, 0.18);
-    border-color: rgba(255, 255, 255, 0.35);
+    color: #fff;
+    transform: scale(0.93);
+}
+
+.touch-boost.active {
+    background: rgba(255, 144, 67, 0.35);
+    border-color: #ff9043;
+    box-shadow: 0 0 18px rgba(255, 144, 67, 0.55);
+}
+
+.touch-brake.active {
+    background: rgba(255, 107, 94, 0.32);
+    border-color: #ff6b5e;
+    box-shadow: 0 0 18px rgba(255, 107, 94, 0.5);
 }
 
 .touch-brake {

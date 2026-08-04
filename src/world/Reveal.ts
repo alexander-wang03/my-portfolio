@@ -14,8 +14,14 @@ import type * as THREE from 'three'
  *    fade their opacity in instead.
  */
 
+interface FadeEntry {
+    material: THREE.Material
+    /** Materials whose texture carries alpha must never flip back to opaque. */
+    alwaysTransparent: boolean
+}
+
 const shaderMaterials: THREE.ShaderMaterial[] = []
-const fadeMaterials: THREE.Material[] = []
+const fadeMaterials: FadeEntry[] = []
 
 let revealProgress = 0
 let fadeProgress = 0
@@ -27,9 +33,17 @@ export function registerRevealShader(material: THREE.ShaderMaterial): void {
 }
 
 /** Register a flat material that should fade in with the reveal. */
-export function registerRevealFade(material: THREE.Material): void {
-    fadeMaterials.push(material)
-    applyFade(material, fadeProgress)
+export function registerRevealFade(
+    material: THREE.Material,
+    options: { alwaysTransparent?: boolean } = {},
+): void {
+    const entry: FadeEntry = {
+        material,
+        alwaysTransparent: options.alwaysTransparent ?? false,
+    }
+
+    fadeMaterials.push(entry)
+    applyFade(entry, fadeProgress)
 }
 
 export function setRevealProgress(value: number): void {
@@ -43,12 +57,13 @@ export function setRevealProgress(value: number): void {
 export function setRevealFade(value: number): void {
     fadeProgress = value
 
-    for (const material of fadeMaterials) {
-        applyFade(material, value)
+    for (const entry of fadeMaterials) {
+        applyFade(entry, value)
     }
 }
 
-function applyFade(material: THREE.Material, value: number): void {
+function applyFade(entry: FadeEntry, value: number): void {
+    const material = entry.material
     material.opacity = value
 
     // A fully transparent material still writes depth, which would punch an
@@ -56,7 +71,7 @@ function applyFade(material: THREE.Material, value: number): void {
     material.visible = value > 0.001
 
     // Back to opaque once revealed, so boards sort as ordinary geometry again.
-    const shouldBeTransparent = value < 1
+    const shouldBeTransparent = entry.alwaysTransparent || value < 1
     if (material.transparent !== shouldBeTransparent) {
         material.transparent = shouldBeTransparent
         material.needsUpdate = true

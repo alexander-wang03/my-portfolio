@@ -31,6 +31,8 @@ export default class Physics {
 
     // Vehicle state
     steering = 0
+    /** Eased 0–1 brake strength, so the brake comes on over a few frames. */
+    private brakeRamp = 0
     forwardSpeed = 0
     chassisPosition = new THREE.Vector3()
     chassisQuaternion = new THREE.Quaternion()
@@ -69,7 +71,16 @@ export default class Physics {
         maxSpeed: 21,
         maxSteeringAngle: Math.PI * 0.2,
         steeringSpeed: 0.04,
-        brakeForce: 8,
+        brakeForce: 18,
+        // Fraction of horizontal speed kept per frame at 60fps. Braking must
+        // stay below coasting or the brake feels like it does nothing — but
+        // not far below, or it stops dead. Time to shed 90% of speed:
+        // coasting ~1.26s, braking ~0.94s.
+        rollingDamping: 0.97,
+        brakeDamping: 0.96,
+        // Seconds for the brake to reach full strength. Applying it instantly
+        // is most of what reads as "aggressive", regardless of the magnitude.
+        brakeRampTime: 0.3,
     }
 
     // Upside-down detection
@@ -262,14 +273,26 @@ export default class Physics {
             const forceMult = 1 - speedRatio * speedRatio
             const maxForce = baseForce * forceMult
 
+            // Ease the brake in and out rather than switching it, so it reads
+            // as a pedal being pressed instead of a wall appearing
+            const rampRate = dt / this.options.brakeRampTime
+            this.brakeRamp = this.controls.actions.brake
+                ? Math.min(1, this.brakeRamp + rampRate)
+                : Math.max(0, this.brakeRamp - rampRate)
+
+            // Braking progressively cuts the throttle, so holding both slows
+            // the rover without the engine cutting out in a single frame
+            const throttle = 1 - this.brakeRamp
+            const driving = this.controls.actions.up || this.controls.actions.down
+
             if (this.controls.actions.up) {
                 // All-wheel drive — spread force across 4 wheels
-                const perWheel = maxForce * 0.5
+                const perWheel = maxForce * 0.5 * throttle
                 for (let i = 0; i < 4; i++) {
                     this.vehicleController.setWheelEngineForce(i, perWheel)
                 }
             } else if (this.controls.actions.down) {
-                const perWheel = -maxForce * 0.3
+                const perWheel = -maxForce * 0.3 * throttle
                 for (let i = 0; i < 4; i++) {
                     this.vehicleController.setWheelEngineForce(i, perWheel)
                 }
@@ -280,7 +303,7 @@ export default class Physics {
             }
 
             // --- Brake ---
-            const brakeForce = this.controls.actions.brake ? this.options.brakeForce : 0
+            const brakeForce = this.options.brakeForce * this.brakeRamp
             for (let i = 0; i < 4; i++) {
                 this.vehicleController.setWheelBrake(i, brakeForce)
             }
@@ -325,12 +348,19 @@ export default class Physics {
             }
             this.prevVelocity.copy(currentVel)
 
-            // --- Natural slowdown when not accelerating ---
-            if (!this.controls.actions.up && !this.controls.actions.down && !this.controls.actions.brake) {
+            // --- Slowdown when not driving ---
+            // Braking used to be excluded from this block, which meant holding
+            // the brake removed the rolling damping and shed speed *slower*
+            // than simply letting go. Braking now damps harder than coasting.
+            if (!driving || this.brakeRamp > 0) {
                 const linvel = this.chassisBody.linvel()
                 const speed = Math.sqrt(linvel.x * linvel.x + linvel.z * linvel.z)
                 if (speed > 0.1) {
-                    const damping = 0.97
+                    // Blend toward the braking figure as the pedal comes on
+                    const perFrame = this.options.rollingDamping
+                        + (this.options.brakeDamping - this.options.rollingDamping) * this.brakeRamp
+                    // Framerate independent — the constants are tuned for 60fps
+                    const damping = Math.pow(perFrame, dt * 60)
                     this.chassisBody.setLinvel(
                         { x: linvel.x * damping, y: linvel.y, z: linvel.z * damping },
                         true,

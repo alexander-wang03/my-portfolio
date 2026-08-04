@@ -181,6 +181,7 @@ export default class World {
         this.controls = new Controls({
             config: this.config,
             camera: this.camera,
+            time: this.time,
         })
     }
 
@@ -273,6 +274,7 @@ export default class World {
         const intro = new IntroSection({
             objects: this.objects,
             terrain: this.terrain,
+            touch: this.controls.hasTouchControls,
             x: 0,
             z: 0,
         })

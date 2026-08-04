@@ -1,9 +1,11 @@
 import EventEmitter from '../engine/Utils/EventEmitter'
 import type Camera from '../engine/Camera'
+import type Time from '../engine/Utils/Time'
 
 export interface ControlsOptions {
     config: { debug: boolean; touch: boolean }
     camera: Camera
+    time: Time
 }
 
 export interface Actions {
@@ -18,14 +20,18 @@ export interface Actions {
 export default class Controls extends EventEmitter {
     config: ControlsOptions['config']
     camera: Camera
+    time: Time
     actions: Actions
     enabled = false
+    /** True when the on-screen joystick and buttons were created. */
+    hasTouchControls = false
 
     constructor(options: ControlsOptions) {
         super()
 
         this.config = options.config
         this.camera = options.camera
+        this.time = options.time
 
         this.actions = {
             up: false,
@@ -40,6 +46,7 @@ export default class Controls extends EventEmitter {
         this.setVisibilityReset()
 
         if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            this.hasTouchControls = true
             this.setTouch()
         }
     }
@@ -217,12 +224,10 @@ export default class Controls extends EventEmitter {
                 e.preventDefault()
                 e.stopPropagation()
                 this.actions[action] = true
-                btn.classList.add('active')
             }, { passive: false })
 
             const release = () => {
                 this.actions[action] = false
-                btn.classList.remove('active')
             }
             btn.addEventListener('touchend', release)
             btn.addEventListener('touchcancel', release)
@@ -230,6 +235,14 @@ export default class Controls extends EventEmitter {
 
         bindButton(brakeBtn, 'brake')
         bindButton(boostBtn, 'boost')
+
+        // Light the buttons from the action state rather than from the touch
+        // handlers, so the keyboard (Shift / Space) lights them up too — these
+        // buttons are also on screen for any touch-capable laptop.
+        this.time.on('tick', () => {
+            brakeBtn.classList.toggle('active', this.actions.brake)
+            boostBtn.classList.toggle('active', this.actions.boost)
+        })
     }
 
     private setVisibilityReset(): void {
