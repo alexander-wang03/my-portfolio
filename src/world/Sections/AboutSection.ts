@@ -4,7 +4,7 @@ import type Terrain from '../Terrain'
 import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
-import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
+import { createMatcapMaterial } from '../Materials/Matcap'
 import {
     BOARD_BACKGROUND,
     BOARD_FONT,
@@ -35,12 +35,7 @@ export default class AboutSection {
     }
 
     private createAboutSign(options: AboutSectionOptions): void {
-        const metalTex = loadMatcapTexture('metal')
-        const pillarMat = createMatcapMaterial({
-            matcapTexture: metalTex,
-            color: new THREE.Color('#808080'),
-            indirect: 0,
-        })
+        const pillarMat = createMatcapMaterial({ matcap: 'gray' })
 
         const px = options.x
         const pz = options.z

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type Terrain from './Terrain'
-import { createMatcapMaterial, loadMatcapTexture } from './Materials/Matcap'
+import { createMatcapMaterial } from './Materials/Matcap'
 
 export interface TilesOptions {
     terrain: Terrain
@@ -31,11 +31,11 @@ export default class Tiles {
             { start: { x: 0, z: 11 }, end: { x: 0, z: 22 } },
         ]
 
-        const metalTex = loadMatcapTexture('metal')
+        // Lighter than the rocks so the path still reads, but `beige` untinted
+        // is near-white and glows against the terrain
         const tileMat = createMatcapMaterial({
-            matcapTexture: metalTex,
-            color: new THREE.Color('#d4a574'),
-            indirect: 0,
+            matcap: 'beige',
+            color: new THREE.Color('#d0b087'),
         })
 
         const tileSize = 0.3

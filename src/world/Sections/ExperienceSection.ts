@@ -6,7 +6,7 @@ import type Terrain from '../Terrain'
 import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
-import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
+import { createMatcapMaterial, type MatcapName } from '../Materials/Matcap'
 import {
     BOARD_BACKGROUND,
     BOARD_FONT,
@@ -41,12 +41,7 @@ export default class ExperienceSection {
     }
 
     private createMilestones(options: ExperienceSectionOptions): void {
-        const metalTex = loadMatcapTexture('metal')
-        const pillarMat = createMatcapMaterial({
-            matcapTexture: metalTex,
-            color: new THREE.Color('#808080'),
-            indirect: 0,
-        })
+        const pillarMat = createMatcapMaterial({ matcap: 'gray' })
 
         const startOffset = -((EXPERIENCES.length - 1) * SPACING) / 2
 
@@ -117,21 +112,29 @@ export default class ExperienceSection {
     }
 
     private createPushableBlocks(options: ExperienceSectionOptions): void {
-        const metalTex = loadMatcapTexture('metal')
         const blockSize = 0.35
         const blockGeo = new THREE.BoxGeometry(blockSize, blockSize, blockSize)
 
-        const colors = ['#ff9043', '#fccf92', '#f5aa58', '#d4a574']
+        // The only genuinely colourful props in the world, so they should read
+        // as toys. Tinting each with a saturated version of its own hue
+        // deepens it — the one case where multiplying like with like is what
+        // you want. `beige` was a pale non-colour; emerald is the only cool
+        // note on an orange planet and pops hardest against it.
+        const blocks: { matcap: MatcapName; tint?: string }[] = [
+            { matcap: 'orange', tint: '#ff8c1a' },
+            { matcap: 'yellow', tint: '#ffc61a' },
+            { matcap: 'red', tint: '#ff3b26' },
+            { matcap: 'emeraldGreen' },
+        ]
 
-        for (let i = 0; i < colors.length; i++) {
+        for (let i = 0; i < blocks.length; i++) {
             const mat = createMatcapMaterial({
-                matcapTexture: metalTex,
-                color: new THREE.Color(colors[i]),
-                indirect: 0,
+                matcap: blocks[i].matcap,
+                color: blocks[i].tint ? new THREE.Color(blocks[i].tint) : undefined,
             })
 
             const mesh = new THREE.Mesh(blockGeo, mat)
-            const angle = (i / colors.length) * Math.PI * 2
+            const angle = (i / blocks.length) * Math.PI * 2
             const radius = 3 + Math.random()
             const bx = options.x + Math.cos(angle) * radius
             const bz = options.z + Math.sin(angle) * radius

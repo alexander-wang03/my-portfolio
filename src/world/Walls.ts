@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type Objects from './Objects'
 import type Terrain from './Terrain'
-import { createMatcapMaterial, loadMatcapTexture } from './Materials/Matcap'
+import { createMatcapMaterial } from './Materials/Matcap'
 
 export interface WallsOptions {
     objects: Objects
@@ -17,11 +17,10 @@ export default class Walls {
     }
 
     private createBoundary(options: WallsOptions): void {
-        const metalTex = loadMatcapTexture('metal')
+        // Slightly darker than the rocks so the boundary recedes
         const wallMat = createMatcapMaterial({
-            matcapTexture: metalTex,
-            color: new THREE.Color('#8b5e3c'),
-            indirect: 0,
+            matcap: 'brown',
+            color: new THREE.Color('#a8805f'),
         })
 
         // Octagonal boundary at radius ~75

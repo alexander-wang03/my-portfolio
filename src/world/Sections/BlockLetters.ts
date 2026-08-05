@@ -4,7 +4,7 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
 import fontData from 'three/examples/fonts/helvetiker_bold.typeface.json'
 import type Objects from '../Objects'
 import type Terrain from '../Terrain'
-import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
+import { createMatcapMaterial } from '../Materials/Matcap'
 import { BLOCK_LETTERS_NAME } from '../../content/portfolio'
 
 export interface BlockLettersOptions {
@@ -14,7 +14,11 @@ export interface BlockLettersOptions {
     z: number
 }
 
-const LETTER_COLOR = '#ffffff'
+// A matcap *is* the shading, so its luminance range is the object's contrast.
+// `metal` spans 0.20-0.98 against 0.57-0.92 for `white`, which is why the
+// extrusion reads here and went flat with any of the matte matcaps.
+const LETTER_MATCAP = 'metal' as const
+const LETTER_TINT = '#ffffff'
 
 /** Uniform gap between adjacent letters, and the extra gap a space adds. */
 const TRACKING = 0.55
@@ -36,7 +40,6 @@ export default class BlockLetters {
 
     private createLetters(options: BlockLettersOptions): void {
         const font = new Font(fontData as any)
-        const metalTex = loadMatcapTexture('metal')
 
         const text = BLOCK_LETTERS_NAME
         const letterSize = 1.6
@@ -92,8 +95,8 @@ export default class BlockLetters {
                 const mesh = new THREE.Mesh(
                     glyph.geo,
                     createMatcapMaterial({
-                        matcapTexture: metalTex,
-                        color: new THREE.Color(LETTER_COLOR),
+                        matcap: LETTER_MATCAP,
+                        color: new THREE.Color(LETTER_TINT),
                         indirect: 0,
                     }),
                 )

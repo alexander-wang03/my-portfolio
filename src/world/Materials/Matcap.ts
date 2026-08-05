@@ -3,17 +3,31 @@ import vertexShader from '../../shaders/matcap/vertex.glsl'
 import fragmentShader from '../../shaders/matcap/fragment.glsl'
 import { registerRevealShader } from '../Reveal'
 
+/**
+ * The matcaps in `static/models/matcaps`. All are soft and matte except
+ * `metal` (high-contrast chrome with a specular hotspot) and `gold` (glossy
+ * warm) — reach for those two only where something really is polished metal,
+ * or everything ends up looking like the same shiny plastic.
+ */
+export type MatcapName =
+    | 'beige' | 'black' | 'blue' | 'brown' | 'emeraldGreen' | 'gold' | 'gray'
+    | 'green' | 'metal' | 'orange' | 'purple' | 'red' | 'white' | 'yellow'
+
 export interface MatcapOptions {
-    matcapTexture: THREE.Texture
+    matcap: MatcapName
+    /**
+     * Optional tint, multiplied into the matcap. Leave unset when the matcap
+     * already carries the colour — tinting a coloured matcap with the same
+     * colour squares it and goes muddy.
+     */
     color?: THREE.Color
     edgeFade?: number // 0 = no fade, > 0 = terrain half-size for edge fade
     indirect?: number // 0 = no indirect glow, 1 = full (default 1)
 }
 
 const INDIRECT_DEFAULTS = {
-    distanceAmplitude: 1.75,
-    distanceStrength: 0.5,
-    distancePower: 2.0,
+    /** Peak mix toward the bounce colour — matches folio's ~0.25 at ground level. */
+    strength: 0.25,
     angleStrength: 1.5,
     angleOffset: 0.6,
     anglePower: 1.0,
@@ -33,12 +47,10 @@ export function createMatcapMaterial(options: MatcapOptions): THREE.ShaderMateri
         uniforms: {
             diffuse: { value: options.color ?? new THREE.Color(1, 1, 1) },
             opacity: { value: 1.0 },
-            matcap: { value: options.matcapTexture },
+            matcap: { value: loadMatcapTexture(options.matcap) },
             uRevealProgress: { value: 0 },
-            uIndirectDistanceAmplitude: { value: INDIRECT_DEFAULTS.distanceAmplitude },
-            uIndirectDistanceStrength: { value: INDIRECT_DEFAULTS.distanceStrength * indirect },
-            uIndirectDistancePower: { value: INDIRECT_DEFAULTS.distancePower },
-            uIndirectAngleStrength: { value: INDIRECT_DEFAULTS.angleStrength * indirect },
+            uIndirectStrength: { value: INDIRECT_DEFAULTS.strength * indirect },
+            uIndirectAngleStrength: { value: INDIRECT_DEFAULTS.angleStrength },
             uIndirectAngleOffset: { value: INDIRECT_DEFAULTS.angleOffset },
             uIndirectAnglePower: { value: INDIRECT_DEFAULTS.anglePower },
             uIndirectColor: { value: INDIRECT_DEFAULTS.color.clone() },
@@ -54,7 +66,7 @@ export function createMatcapMaterial(options: MatcapOptions): THREE.ShaderMateri
 const textureLoader = new THREE.TextureLoader()
 const textureCache = new Map<string, THREE.Texture>()
 
-export function loadMatcapTexture(name: string): THREE.Texture {
+function loadMatcapTexture(name: MatcapName): THREE.Texture {
     if (textureCache.has(name)) return textureCache.get(name)!
 
     const texture = textureLoader.load(`/models/matcaps/${name}.png`)

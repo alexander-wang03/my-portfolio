@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'
 import type Terrain from './Terrain'
-import { createMatcapMaterial, loadMatcapTexture } from './Materials/Matcap'
+import { createMatcapMaterial } from './Materials/Matcap'
 
 export interface RoverOptions {
     time: Time
@@ -41,13 +41,18 @@ export default class Rover {
 
     private buildRover(): void {
         const o = this.physics.options
-        const metalTex = loadMatcapTexture('metal')
-        const bodyMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#ffffff'), indirect: 0 })
-        const deckMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#ffdd40'), indirect: 0 })
-        const mastMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#d0d0d8'), indirect: 0 })
-        const wheelMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#555560'), indirect: 0 })
-        const antennaMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#ff3030'), indirect: 0 })
-        const armMat = createMatcapMaterial({ matcapTexture: metalTex, color: new THREE.Color('#c0c0c0'), indirect: 0 })
+        // Deliberately all `metal`: it has by far the widest luminance range of
+        // the matcaps (0.20-0.98 vs 0.30-0.45 for the matte ones), so saturated
+        // tints over it stay saturated and every face still reads. The softer
+        // per-part matcaps looked more "correct" but went flat.
+        const tint = (hex: string) => new THREE.Color(hex)
+
+        const bodyMat = createMatcapMaterial({ matcap: 'metal', color: tint('#ffffff'), indirect: 0 })
+        const deckMat = createMatcapMaterial({ matcap: 'metal', color: tint('#ffdd40'), indirect: 0 })
+        const mastMat = createMatcapMaterial({ matcap: 'metal', color: tint('#d0d0d8'), indirect: 0 })
+        const wheelMat = createMatcapMaterial({ matcap: 'metal', color: tint('#555560'), indirect: 0 })
+        const antennaMat = createMatcapMaterial({ matcap: 'metal', color: tint('#ff3030'), indirect: 0 })
+        const armMat = createMatcapMaterial({ matcap: 'metal', color: tint('#c0c0c0'), indirect: 0 })
 
         this.bodyGroup = new THREE.Group()
 

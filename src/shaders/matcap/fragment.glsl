@@ -2,9 +2,7 @@ uniform vec3 diffuse;
 uniform float opacity;
 uniform sampler2D matcap;
 
-uniform float uIndirectDistanceAmplitude;
-uniform float uIndirectDistanceStrength;
-uniform float uIndirectDistancePower;
+uniform float uIndirectStrength;
 uniform float uIndirectAngleStrength;
 uniform float uIndirectAngleOffset;
 uniform float uIndirectAnglePower;
@@ -28,16 +26,20 @@ void main() {
     vec4 matcapColor = texture2D(matcap, muv);
     vec3 outgoingLight = diffuse * matcapColor.rgb;
 
-    // Indirect lighting — warm glow from ground bounce (Y-up adapted)
-    float indirectDistanceStrength = clamp(1.0 - vWorldPosition.y / uIndirectDistanceAmplitude, 0.0, 1.0) * uIndirectDistanceStrength;
-    indirectDistanceStrength = pow(indirectDistanceStrength, uIndirectDistancePower);
+    // Indirect bounce — warm light kicked back up off the ground onto
+    // downward-facing surfaces. This is what gives objects a vertical
+    // gradient instead of reading as a flat matcap sticker.
+    //
+    // folio fades it out with height above its flat floor, but our terrain
+    // rises to 6 units, so a height-based falloff switches the effect off
+    // entirely on high ground. Driven by the surface normal alone instead,
+    // which is altitude independent.
+    float indirect = dot(vWorldNormal, vec3(0.0, -1.0, 0.0)) + uIndirectAngleOffset;
+    indirect = clamp(indirect * uIndirectAngleStrength, 0.0, 1.0);
+    indirect = pow(indirect, uIndirectAnglePower);
+    indirect *= uIndirectStrength;
 
-    float indirectAngleStrength = dot(vWorldNormal, vec3(0.0, -1.0, 0.0)) + uIndirectAngleOffset;
-    indirectAngleStrength = clamp(indirectAngleStrength * uIndirectAngleStrength, 0.0, 1.0);
-    indirectAngleStrength = pow(indirectAngleStrength, uIndirectAnglePower);
-
-    float indirectStrength = indirectDistanceStrength * indirectAngleStrength;
-    vec3 finalColor = mix(outgoingLight, uIndirectColor, indirectStrength);
+    vec3 finalColor = mix(outgoingLight, uIndirectColor, indirect);
 
     // Optional terrain edge fade
     float alpha = opacity;

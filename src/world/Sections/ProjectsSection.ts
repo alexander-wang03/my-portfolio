@@ -5,7 +5,7 @@ import type Terrain from '../Terrain'
 import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
-import { createMatcapMaterial, loadMatcapTexture } from '../Materials/Matcap'
+import { createMatcapMaterial } from '../Materials/Matcap'
 import { BOARD_BACKGROUND, createBoardMaterial, createTextTexture } from '../Materials/SignBoard'
 import { PROJECTS } from '../../content/portfolio'
 
@@ -40,12 +40,7 @@ export default class ProjectsSection {
     }
 
     private createSignposts(options: ProjectsSectionOptions): void {
-        const metalTex = loadMatcapTexture('metal')
-        const pillarMat = createMatcapMaterial({
-            matcapTexture: metalTex,
-            color: new THREE.Color('#808080'),
-            indirect: 0,
-        })
+        const pillarMat = createMatcapMaterial({ matcap: 'gray' })
 
         for (let i = 0; i < PROJECTS.length; i++) {
             const project = PROJECTS[i]

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type Terrain from './Terrain'
 import type Objects from './Objects'
-import { createMatcapMaterial, loadMatcapTexture } from './Materials/Matcap'
+import { createMatcapMaterial } from './Materials/Matcap'
 
 export interface RocksOptions {
     terrain: Terrain
@@ -134,10 +134,12 @@ export default class Rocks {
     constructor(options: RocksOptions) {
         this.container = new THREE.Object3D()
 
-        const metalTex = loadMatcapTexture('metal')
         const rand = seededRandom(42)
 
-        // Mars rock color palette — dark browns, rust, dusty tan
+        // Mars rock color palette — dark browns, rust, dusty tan.
+        // Deliberately `metal` rather than the matte `brown`/`beige` matcaps:
+        // its 0.20-0.98 luminance range keeps these dark tints reading as
+        // faceted rock, where the matte matcaps flattened them out.
         const rockColors = [
             '#5c3a24', // dark brown
             '#6b4430', // medium brown
@@ -148,7 +150,7 @@ export default class Rocks {
         ]
 
         const makeMat = (colorIdx: number) => createMatcapMaterial({
-            matcapTexture: metalTex,
+            matcap: 'metal',
             color: new THREE.Color(rockColors[colorIdx % rockColors.length]),
             indirect: 0,
         })
