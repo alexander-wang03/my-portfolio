@@ -287,6 +287,43 @@ export default class Terrain {
         return n - Math.floor(n)
     }
 
+    /**
+     * Height of the terrain surface as actually rendered.
+     *
+     * `getHeightAt` interpolates bilinearly, but the mesh is two flat
+     * triangles per grid cell, and inside a cell those two surfaces disagree —
+     * by up to ~0.25 units at this cell size. That is more than enough for a
+     * ground decal positioned with `getHeightAt` to sink through the terrain,
+     * so anything laid on the ground should use this instead.
+     *
+     * PlaneGeometry splits each cell along the diagonal joining its
+     * (x_lo, z_hi) and (x_hi, z_lo) corners, i.e. fx + fz = 1.
+     */
+    getSurfaceHeightAt(worldX: number, worldZ: number): number {
+        const half = this.size / 2
+        const step = this.size / this.segments
+
+        const gx = (worldX + half) / step
+        const gz = (worldZ + half) / step
+        const cx = Math.min(Math.max(Math.floor(gx), 0), this.segments - 1)
+        const cz = Math.min(Math.max(Math.floor(gz), 0), this.segments - 1)
+        const fx = gx - cx
+        const fz = gz - cz
+
+        // Exact at grid points, so sampling the corners this way is lossless
+        const corner = (i: number, j: number) =>
+            this.getHeightAt(-half + i * step, -half + j * step)
+
+        const h00 = corner(cx, cz)
+        const h10 = corner(cx + 1, cz)
+        const h01 = corner(cx, cz + 1)
+        const h11 = corner(cx + 1, cz + 1)
+
+        return fx + fz <= 1
+            ? h00 + (h10 - h00) * fx + (h01 - h00) * fz
+            : h11 + (h01 - h11) * (1 - fx) + (h10 - h11) * (1 - fz)
+    }
+
     /** Get height at a world XZ coordinate */
     getHeightAt(worldX: number, worldZ: number): number {
         const u = (worldX / this.size) + 0.5

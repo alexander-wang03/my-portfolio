@@ -221,6 +221,7 @@ export default class World {
             time: this.time,
             physics: this.physics,
             camera: this.camera,
+            terrain: this.terrain,
             renderer: this.renderer,
         })
         this.container.add(this.areas.container)

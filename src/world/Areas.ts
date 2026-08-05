@@ -2,12 +2,14 @@ import * as THREE from 'three'
 import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'
 import type Camera from '../engine/Camera'
+import type Terrain from './Terrain'
 import Area, { type AreaOptions } from './Area'
 
 export interface AreasOptions {
     time: Time
     physics: Physics
     camera: Camera
+    terrain: Terrain
     renderer: THREE.WebGLRenderer
 }
 
@@ -17,6 +19,8 @@ export default class Areas {
     private raycaster: THREE.Raycaster
     private mouse: THREE.Vector2
     private camera: Camera
+    private terrain: Terrain
+    private domElement: HTMLElement
     private currentArea: Area | null
     private needsUpdate: boolean
 
@@ -26,6 +30,8 @@ export default class Areas {
         this.raycaster = new THREE.Raycaster()
         this.mouse = new THREE.Vector2()
         this.camera = options.camera
+        this.terrain = options.terrain
+        this.domElement = options.renderer.domElement
         this.currentArea = null
         this.needsUpdate = false
 
@@ -50,8 +56,8 @@ export default class Areas {
         })
     }
 
-    add(options: AreaOptions): Area {
-        const area = new Area(options)
+    add(options: Omit<AreaOptions, 'terrain'>): Area {
+        const area = new Area({ ...options, terrain: this.terrain })
         this.items.push(area)
         this.container.add(area.container)
         return area
@@ -92,9 +98,11 @@ export default class Areas {
                 this.currentArea = area
                 area.in()
             }
+            this.domElement.classList.add('has-cursor-pointer')
         } else if (this.currentArea) {
             this.currentArea.out()
             this.currentArea = null
+            this.domElement.classList.remove('has-cursor-pointer')
         }
     }
 }

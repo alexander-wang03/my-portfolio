@@ -8,8 +8,96 @@
 
 html,
 body {
+    background: #0a0504;
+}
+
+/* Only the 3D world locks scrolling — the fallback page needs to scroll */
+.has-js,
+.has-js body {
     overflow: hidden;
-    background: #000000;
+}
+
+/* ── Plain-HTML fallback ───────────────────────────────────────────────
+   Injected into index.html at build time from src/content/portfolio.ts, so
+   crawlers, link previews, screen readers and anyone without WebGL get the
+   actual content instead of a bare canvas. Hidden once the world boots. */
+
+.has-js .fallback {
+    display: none;
+}
+
+.fallback {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: rgba(255, 255, 255, 0.82);
+    line-height: 1.6;
+}
+
+.fallback h1 {
+    font-size: 2.25rem;
+    font-weight: 200;
+    letter-spacing: 0.28em;
+    color: #d4a574;
+}
+
+.fallback .tagline {
+    margin-top: 0.5rem;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.08em;
+}
+
+.fallback section {
+    margin-top: 3rem;
+}
+
+.fallback h2 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #d4a574;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 144, 67, 0.25);
+}
+
+.fallback h3 {
+    font-size: 1.05rem;
+    color: #f5aa58;
+    margin-bottom: 0.15rem;
+}
+
+.fallback ul {
+    list-style: none;
+}
+
+.fallback li {
+    margin-top: 1.5rem;
+}
+
+.fallback .role {
+    font-size: 0.85rem;
+    color: #d4a574;
+}
+
+.fallback .contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+}
+
+.fallback .contact li {
+    margin-top: 0.75rem;
+}
+
+.fallback a {
+    color: #ff9043;
+}
+
+.fallback footer {
+    margin-top: 4rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.4);
 }
 
 .js-canvas {
@@ -26,6 +114,10 @@ body {
 
 .has-cursor-grabbing {
     cursor: grabbing;
+}
+
+.has-cursor-pointer {
+    cursor: pointer;
 }
 
 /* ── Loading Screen ────────────────────────────────────────────────── */

@@ -24,11 +24,86 @@
     <!-- Favicon -->
     <link rel="icon" href="/favicon.ico" media="(prefers-color-scheme: light)">
     <link rel="icon" href="/favicon-dark.ico" media="(prefers-color-scheme: dark)">
+
+    <!-- Set before first paint so the plain-HTML fallback below never flashes
+         for visitors who are getting the 3D world. -->
+    <script>document.documentElement.classList.add('has-js')</script>
 
-  <script type="module" crossorigin src="/assets/index-BSnj9kQn.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DNcCU49N.css">
+  <script type="module" crossorigin src="/assets/index-D5MbGIyn.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DQ7jK-rR.css">
 </head>
 <body>
     <canvas class="js-canvas"></canvas>
+
+    <main class="fallback" id="fallback">
+        <header>
+            <h1>ALEXANDER WANG</h1>
+            <p class="tagline">UofT Engineering Science — Robotics</p>
+        </header>
+
+        <section>
+            <h2>About Me</h2>
+            <p>Hi, I'm Alex. I'm an engineer, pilot, and creator with over 4 years of experience. I love building robots and getting them in people's hands.</p>
+            <p><strong>Currently:</strong> AI Researcher at <strong>TRAIL Lab</strong>, University of Toronto</p>
+            <p><strong>Education:</strong> University of Toronto, Engineering Science — Robotics (AI Minor)</p>
+        </section>
+
+        <section>
+            <h2>Experience</h2>
+            <ul>
+            <li>
+                <h3>SpaceX</h3>
+                <p class="role">Software Engineering Intern &middot; May 2025 – Aug 2025</p>
+                <p>Designed PLC-based controller architecture for Hardware-in-the-Loop test systems, reducing downtime by 87%.</p>
+            </li>
+            <li>
+                <h3>General Motors</h3>
+                <p class="role">Software &amp; Controls Intern &middot; May 2024 – Apr 2025</p>
+                <p>Developed thermal control system software and automated SIL testing pipeline for EV propulsion.</p>
+            </li>
+            <li>
+                <h3>aUToronto</h3>
+                <p class="role">State Estimation Lead &middot; Sep 2023 – Jun 2025</p>
+                <p>Led autonomous vehicle team to back-to-back 1st place finishes at SAE AutoDrive Challenge.</p>
+            </li>
+            <li>
+                <h3>TRAIL Lab</h3>
+                <p class="role">AI Researcher &middot; May 2024 – Present</p>
+                <p>Developing Bayesian 3D lane detection and 3D hierarchical scene graphs for VLA models.</p>
+            </li></ul>
+            <p><a href="/CV.pdf">Download r&eacute;sum&eacute; (PDF)</a></p>
+        </section>
+
+        <section>
+            <h2>Projects</h2>
+            <ul>
+            <li>
+                <h3><a href="https://github.com/TARS-AI-Community/TARS-AI">TARS-AI</a></h3>
+                <p>Co-founded an open-source robotics community recreating the robot TARS from Interstellar — 1000+ members.</p>
+            </li>
+            <li>
+                <h3><a href="https://www.trailab.utias.utoronto.ca/">BoreasLane</a></h3>
+                <p>First publicly available 3D winter condition lane dataset for autonomous vehicles.</p>
+            </li>
+            <li>
+                <h3><a href="https://www.autodrive.utoronto.ca/">aUToronto</a></h3>
+                <p>C++ multi-sensor fusion for autonomous vehicle state estimation — back-to-back 1st place at SAE AutoDrive.</p>
+            </li>
+            <li>
+                <h3><a href="https://github.com/alexander-wang03/SynthBoard">SynthBoard</a></h3>
+                <p>Audio synthesizer with 4x4 button interface, RGB LEDs, and 8 knobs for real-time waveform manipulation.</p>
+            </li></ul>
+        </section>
+
+        <section>
+            <h2>Contact</h2>
+            <ul class="contact"><li><a href="https://github.com/alexander-wang03">GitHub</a></li><li><a href="https://www.linkedin.com/in/alexander-wang03/">LinkedIn</a></li><li><a href="mailto:alexshuaiwang@gmail.com">Email</a></li></ul>
+        </section>
+
+        <footer>
+            <p>This site is normally an interactive 3D world &mdash; My World &mdash;
+            which needs JavaScript and WebGL. You are seeing the plain text version.</p>
+        </footer>
+    </main>
 </body>
 </html>

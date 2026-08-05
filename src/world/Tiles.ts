@@ -80,7 +80,7 @@ export default class Tiles {
                 const tx = baseX + tanX * sign + (Math.random() - 0.5) * 0.3
                 const tz = baseZ + tanZ * sign + (Math.random() - 0.5) * 0.3
 
-                const terrainY = options.terrain.getHeightAt(tx, tz)
+                const terrainY = options.terrain.getSurfaceHeightAt(tx, tz)
 
                 const tile = new THREE.Mesh(tileGeo, tileMat)
                 tile.position.set(tx, terrainY + 0.02, tz)

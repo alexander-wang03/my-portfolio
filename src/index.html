@@ -25,6 +25,10 @@
     <link rel="icon" href="/favicon.ico" media="(prefers-color-scheme: light)">
     <link rel="icon" href="/favicon-dark.ico" media="(prefers-color-scheme: dark)">
 
+    <!-- Set before first paint so the plain-HTML fallback below never flashes
+         for visitors who are getting the 3D world. -->
+    <script>document.documentElement.classList.add('has-js')</script>
+
     <link rel="stylesheet" href="./style/main.css">
 </head>
 <body>

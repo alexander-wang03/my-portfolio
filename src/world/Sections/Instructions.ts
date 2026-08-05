@@ -176,7 +176,7 @@ export default class Instructions {
         for (let i = 0; i < position.count; i++) {
             const worldX = options.x + position.getX(i)
             const worldZ = options.z + position.getZ(i)
-            position.setY(i, options.terrain.getHeightAt(worldX, worldZ) + 0.04)
+            position.setY(i, options.terrain.getSurfaceHeightAt(worldX, worldZ) + 0.02)
         }
         position.needsUpdate = true
         geometry.computeBoundingSphere()
