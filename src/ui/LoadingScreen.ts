@@ -14,6 +14,8 @@ export default class LoadingScreen extends EventEmitter {
 
         this.element = document.createElement('div')
         this.element.className = 'loading-screen'
+        // Decorative chrome for the 3D world; the readable version is elsewhere
+        this.element.setAttribute('aria-hidden', 'true')
 
         const title = document.createElement('h1')
         title.className = 'loading-title'

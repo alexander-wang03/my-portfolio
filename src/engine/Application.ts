@@ -254,4 +254,9 @@ export default class Application {
             this.composer.render()
         })
     }
+
+    /** Halt the render loop — used when handing over to the text version. */
+    stop(): void {
+        this.time.stop()
+    }
 }

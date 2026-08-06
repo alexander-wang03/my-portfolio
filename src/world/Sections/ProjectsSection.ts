@@ -84,7 +84,7 @@ export default class ProjectsSection {
         const zone = options.zones.add({
             position: { x: options.x, z: options.z },
             halfExtents: { x: totalWidth / 2 + 3, z: 8 },
-            data: { cameraAngle: 'projects' },
+            data: { cameraAngle: 'projects', section: 'projects' },
         })
 
         zone.on('in', () => {

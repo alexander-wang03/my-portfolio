@@ -32,7 +32,13 @@
     <link rel="stylesheet" href="./style/main.css">
 </head>
 <body>
-    <canvas class="js-canvas"></canvas>
+    <!-- First in tab order, so assistive tech and keyboard users reach the
+         readable version before anything else. Hidden until focused. -->
+    <a class="skip-link" href="#fallback">Skip the 3D world &mdash; view the text version</a>
+
+    <!-- Nothing here is describable, so keep it out of the accessibility tree -->
+    <canvas class="js-canvas" aria-hidden="true"></canvas>
+
     <script type="module" src="./main.ts"></script>
 </body>
 </html>

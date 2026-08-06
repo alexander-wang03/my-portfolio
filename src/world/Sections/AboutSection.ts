@@ -88,7 +88,7 @@ export default class AboutSection {
         const zone = options.zones.add({
             position: { x: options.x, z: options.z },
             halfExtents: { x: 8, z: 6 },
-            data: { cameraAngle: 'about' },
+            data: { cameraAngle: 'about', section: 'about' },
         })
 
         zone.on('in', () => {

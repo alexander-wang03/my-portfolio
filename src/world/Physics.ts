@@ -5,6 +5,15 @@ import type Controls from './Controls'
 import type Terrain from './Terrain'
 import type { GUI } from 'dat.gui'
 
+/**
+ * Height the rover drops in from, everywhere.
+ *
+ * Kept low deliberately: from 6 units it lands at ~12.5 m/s, which bottoms out
+ * the 0.3 unit suspension travel, bounces the chassis off the ground and rolls
+ * it onto its side. 3 units is still a visible fall at a survivable speed.
+ */
+export const DROP_IN_HEIGHT = 3
+
 export interface PhysicsOptions {
     time: Time
     controls: Controls
@@ -449,13 +458,52 @@ export default class Physics {
         }
     }
 
-    /** Drop the rover back at spawn. The reveal uses a taller drop for effect. */
-    resetVehicle(dropHeight = 3): void {
-        const spawnHeight = this.terrain.getHeightAt(0, 0) + dropHeight
-        this.chassisBody.setTranslation({ x: 0, y: spawnHeight, z: 0 }, true)
-        this.chassisBody.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
+    /**
+     * Drop the rover in at a point on the map. Defaults to spawn; the reveal
+     * uses a taller drop, and the router uses this to jump between sections.
+     */
+    resetVehicle(dropHeight = DROP_IN_HEIGHT, x = 0, z = 0): void {
+        const spawnHeight = this.terrain.getHeightAt(x, z) + dropHeight
+        const upright = this.slopeQuaternion(x, z)
+
+        this.chassisBody.setTranslation({ x, y: spawnHeight, z }, true)
+        this.chassisBody.setRotation(
+            { x: upright.x, y: upright.y, z: upright.z, w: upright.w },
+            true,
+        )
         this.chassisBody.setLinvel({ x: 0, y: 0, z: 0 }, true)
         this.chassisBody.setAngvel({ x: 0, y: 0, z: 0 }, true)
         this.steering = 0
+    }
+
+    /**
+     * Park the rover in the air over a point, then let it fall.
+     *
+     * The hold matters on first load: the drop otherwise happens behind the
+     * fading loading overlay and is over before anyone sees it.
+     */
+    dropIn(x = 0, z = 0, holdMs = 500): void {
+        this.resetVehicle(DROP_IN_HEIGHT, x, z)
+
+        this.chassisBody.setGravityScale(0, true)
+        window.setTimeout(() => {
+            this.chassisBody.setGravityScale(1, true)
+        }, holdMs)
+    }
+
+    /**
+     * Orientation that lays the rover flat against the ground at a point.
+     *
+     * Dropped axis-aligned onto a slope, one pair of wheels lands first and
+     * the resulting torque can roll the rover onto its side before it settles
+     * — even on the gentle 3-9 degree grades around the sections.
+     */
+    private slopeQuaternion(x: number, z: number): THREE.Quaternion {
+        const step = 1
+        const dx = this.terrain.getHeightAt(x - step, z) - this.terrain.getHeightAt(x + step, z)
+        const dz = this.terrain.getHeightAt(x, z - step) - this.terrain.getHeightAt(x, z + step)
+
+        const normal = new THREE.Vector3(dx, 2 * step, dz).normalize()
+        return new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal)
     }
 }

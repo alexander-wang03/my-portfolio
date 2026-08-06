@@ -93,7 +93,7 @@ export default class ContactSection {
         const zone = options.zones.add({
             position: { x: options.x, z: options.z },
             halfExtents: { x: totalWidth / 2 + 3, z: 7 },
-            data: { cameraAngle: 'contact' },
+            data: { cameraAngle: 'contact', section: 'contact' },
         })
 
         zone.on('in', () => {

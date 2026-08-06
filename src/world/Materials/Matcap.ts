@@ -23,6 +23,12 @@ export interface MatcapOptions {
     color?: THREE.Color
     edgeFade?: number // 0 = no fade, > 0 = terrain half-size for edge fade
     indirect?: number // 0 = no indirect glow, 1 = full (default 1)
+    /**
+     * Whether this object rises out of the ground during the intro reveal.
+     * Set false for anything that arrives another way — the rover drops in
+     * from above, and burying it would hide the entire fall.
+     */
+    reveal?: boolean
 }
 
 const INDIRECT_DEFAULTS = {
@@ -48,7 +54,9 @@ export function createMatcapMaterial(options: MatcapOptions): THREE.ShaderMateri
             diffuse: { value: options.color ?? new THREE.Color(1, 1, 1) },
             opacity: { value: 1.0 },
             matcap: { value: loadMatcapTexture(options.matcap) },
-            uRevealProgress: { value: 0 },
+            // 1 is the shader's "fully surfaced" state, so opting out just
+            // pins it there rather than needing a branch in the shader
+            uRevealProgress: { value: options.reveal === false ? 1 : 0 },
             uIndirectStrength: { value: INDIRECT_DEFAULTS.strength * indirect },
             uIndirectAngleStrength: { value: INDIRECT_DEFAULTS.angleStrength },
             uIndirectAngleOffset: { value: INDIRECT_DEFAULTS.angleOffset },
@@ -58,7 +66,9 @@ export function createMatcapMaterial(options: MatcapOptions): THREE.ShaderMateri
         },
     })
 
-    registerRevealShader(material)
+    if (options.reveal !== false) {
+        registerRevealShader(material)
+    }
 
     return material
 }

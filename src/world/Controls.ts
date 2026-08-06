@@ -131,6 +131,7 @@ export default class Controls extends EventEmitter {
 
         const container = document.createElement('div')
         container.className = 'touch-controls'
+        container.setAttribute('aria-hidden', 'true')
 
         // --- Virtual joystick (left side) ---
         const joystick = document.createElement('div')

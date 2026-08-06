@@ -97,7 +97,7 @@ export default class ExperienceSection {
         const zone = options.zones.add({
             position: { x: options.x, z: options.z },
             halfExtents: { x: totalWidth / 2 + 3, z: 8 },
-            data: { cameraAngle: 'experience' },
+            data: { cameraAngle: 'experience', section: 'experience' },
         })
 
         zone.on('in', () => {
@@ -134,8 +134,13 @@ export default class ExperienceSection {
             })
 
             const mesh = new THREE.Mesh(blockGeo, mat)
-            const angle = (i / blocks.length) * Math.PI * 2
-            const radius = 3 + Math.random()
+
+            // Offset by half a step so no block sits on the +Z axis, which is
+            // where a #experience link drops the rover in. The radius is
+            // deterministic for the same reason — with Math.random() a block
+            // wandered onto the landing spot on some reloads.
+            const angle = ((i + 0.5) / blocks.length) * Math.PI * 2
+            const radius = 3.4 + (i % 2) * 0.5
             const bx = options.x + Math.cos(angle) * radius
             const bz = options.z + Math.sin(angle) * radius
             const by = options.terrain.getHeightAt(bx, bz) + blockSize / 2 + 0.5

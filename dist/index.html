@@ -29,11 +29,17 @@
          for visitors who are getting the 3D world. -->
     <script>document.documentElement.classList.add('has-js')</script>
 
-  <script type="module" crossorigin src="/assets/index-D5MbGIyn.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DQ7jK-rR.css">
+  <script type="module" crossorigin src="/assets/index-BJpkVDh5.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DLpyMCNS.css">
 </head>
 <body>
-    <canvas class="js-canvas"></canvas>
+    <!-- First in tab order, so assistive tech and keyboard users reach the
+         readable version before anything else. Hidden until focused. -->
+    <a class="skip-link" href="#fallback">Skip the 3D world &mdash; view the text version</a>
+
+    <!-- Nothing here is describable, so keep it out of the accessibility tree -->
+    <canvas class="js-canvas" aria-hidden="true"></canvas>
+
 
     <main class="fallback" id="fallback">
         <header>

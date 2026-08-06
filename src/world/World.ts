@@ -14,6 +14,7 @@ import DustParticles from './Particles/DustParticles'
 import AmbientDust from './Particles/AmbientDust'
 import Zones from './Zones'
 import Areas from './Areas'
+import Router from './Router'
 import Objects from './Objects'
 import Walls from './Walls'
 import Tiles from './Tiles'
@@ -40,7 +41,9 @@ export interface WorldOptions {
 
 export interface Reveal {
     matcapsProgress: number
+    /** Sign boards, which fade rather than rise. */
     fadeProgress: number
+    shadowsProgress: number
     go: () => void
 }
 
@@ -70,6 +73,7 @@ export default class World {
     rocks!: Rocks
     shadows!: Shadows
     sounds!: Sounds
+    router!: Router
     reveal!: Reveal
 
     /** Camera tracks the rover, except while it is dropping in on reveal. */
@@ -106,6 +110,7 @@ export default class World {
         this.setRocks()
         this.setOverlay()
         this.setSections()
+        this.setRouter()
         onProgress?.(0.8)
         this.setRover()
         this.setDust()
@@ -115,24 +120,53 @@ export default class World {
         onProgress?.(1.0)
     }
 
+    /** Must run after setSections — it reads the zones those create. */
+    private setRouter(): void {
+        this.router = new Router({
+            zones: this.zones,
+            physics: this.physics,
+        })
+    }
+
     private setReveal(): void {
         this.reveal = {
             matcapsProgress: 0,
             fadeProgress: 0,
+            shadowsProgress: 0,
             go: () => {
                 // The world rises out of the ground, then its shadows and
-                // sign boards fade in behind it.
+                // sign boards catch up behind it.
                 gsap.to(this.reveal, { matcapsProgress: 1, duration: 3, ease: 'none' })
-                gsap.to(this.reveal, { fadeProgress: 1, duration: 2.5, delay: 0.5 })
+
+                // Sign boards are flat materials, so they cannot ride the wave
+                // and stay put while their posts rise — fading them in early
+                // left a board hanging in the air above a half-buried post.
+                // The furthest post surfaces at 1.62s, so start after that.
+                gsap.to(this.reveal, { fadeProgress: 1, duration: 1.1, delay: 1.7 })
+
+                // Shadows sit at final positions from the start for the same
+                // reason, so they also want to trail the objects casting them
+                gsap.to(this.reveal, { shadowsProgress: 1, duration: 2.0, delay: 0.8 })
+
+                // Land on the linked section when the URL names one, so a
+                // shared link opens where it points rather than at spawn
+                const spawn = this.router.initialSpawn() ?? { x: 0, z: 0 }
 
                 // Hold the camera on the spot the rover will land on. Following
                 // it through the air whips the camera up and back down again.
                 this.followRover = false
                 this.followDeadline = this.time.elapsed + 4000
-                this.camera.target.set(0, this.terrain.getHeightAt(0, 0) + 0.5, 0)
+                this.camera.target.set(
+                    spawn.x,
+                    this.terrain.getHeightAt(spawn.x, spawn.z) + 0.5,
+                    spawn.z,
+                )
+                // Snap rather than ease — on a deep link the camera would
+                // otherwise still be travelling from spawn as the rover lands
+                this.camera.targetEased.copy(this.camera.target)
 
-                // Drop the rover in from higher than a normal respawn
-                this.physics.resetVehicle(6)
+                // Held in the air briefly so the fall clears the loading overlay
+                this.physics.dropIn(spawn.x, spawn.z)
 
                 this.sounds.fadeIn()
             },
@@ -140,6 +174,7 @@ export default class World {
 
         let previousMatcaps = -1
         let previousFade = -1
+        let previousShadows = -1
 
         this.time.on('tick', () => {
             if (this.reveal.matcapsProgress !== previousMatcaps) {
@@ -149,9 +184,13 @@ export default class World {
 
             if (this.reveal.fadeProgress !== previousFade) {
                 setRevealFade(this.reveal.fadeProgress)
-                this.shadows.alpha = this.reveal.fadeProgress
-                this.rover.revealAlpha = this.reveal.fadeProgress
                 previousFade = this.reveal.fadeProgress
+            }
+
+            if (this.reveal.shadowsProgress !== previousShadows) {
+                this.shadows.alpha = this.reveal.shadowsProgress
+                this.rover.revealAlpha = this.reveal.shadowsProgress
+                previousShadows = this.reveal.shadowsProgress
             }
         })
 
@@ -159,6 +198,7 @@ export default class World {
             const folder = this.debug.addFolder('reveal')
             folder.add(this.reveal, 'matcapsProgress').step(0.001).min(0).max(1)
             folder.add(this.reveal, 'fadeProgress').step(0.001).min(0).max(1)
+            folder.add(this.reveal, 'shadowsProgress').step(0.001).min(0).max(1)
             folder.add(this.reveal, 'go').name('replay reveal')
         }
     }

@@ -5,6 +5,8 @@ export default class SectionOverlay {
     constructor() {
         this.element = document.createElement('div')
         this.element.className = 'section-overlay'
+        // Duplicates the fallback content, so do not announce it twice
+        this.element.setAttribute('aria-hidden', 'true')
         document.body.appendChild(this.element)
         this._visible = false
     }

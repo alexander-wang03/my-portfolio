@@ -45,14 +45,23 @@ export default class Rover {
         // the matcaps (0.20-0.98 vs 0.30-0.45 for the matte ones), so saturated
         // tints over it stay saturated and every face still reads. The softer
         // per-part matcaps looked more "correct" but went flat.
-        const tint = (hex: string) => new THREE.Color(hex)
+        // reveal: false — the rover drops in from the sky rather than rising
+        // out of the ground, and the reveal wave would bury it for most of
+        // the fall, hiding the drop entirely.
+        const part = (hex: string) =>
+            createMatcapMaterial({
+                matcap: 'metal',
+                color: new THREE.Color(hex),
+                indirect: 0,
+                reveal: false,
+            })
 
-        const bodyMat = createMatcapMaterial({ matcap: 'metal', color: tint('#ffffff'), indirect: 0 })
-        const deckMat = createMatcapMaterial({ matcap: 'metal', color: tint('#ffdd40'), indirect: 0 })
-        const mastMat = createMatcapMaterial({ matcap: 'metal', color: tint('#d0d0d8'), indirect: 0 })
-        const wheelMat = createMatcapMaterial({ matcap: 'metal', color: tint('#555560'), indirect: 0 })
-        const antennaMat = createMatcapMaterial({ matcap: 'metal', color: tint('#ff3030'), indirect: 0 })
-        const armMat = createMatcapMaterial({ matcap: 'metal', color: tint('#c0c0c0'), indirect: 0 })
+        const bodyMat = part('#ffffff')
+        const deckMat = part('#ffdd40')
+        const mastMat = part('#d0d0d8')
+        const wheelMat = part('#555560')
+        const antennaMat = part('#ff3030')
+        const armMat = part('#c0c0c0')
 
         this.bodyGroup = new THREE.Group()
 
