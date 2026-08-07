@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'
 import type Shadows from './Shadows'
+import type { ImpactMaterial } from './Physics'
 
 export interface ObjectAddOptions {
     mesh: THREE.Object3D
@@ -15,6 +16,8 @@ export interface ObjectAddOptions {
     /** Give the convex hull a flat base — see `pointsWithFlatBase`. */
     flatBase?: boolean
     shadow?: { sizeX: number; sizeZ: number; shape?: 'ellipse' | 'box' }
+    /** Voice used when this object is struck. Defaults to the generic thud. */
+    impactSound?: ImpactMaterial
     startAsleep?: boolean
 }
 
@@ -94,10 +97,25 @@ export default class Objects {
             }
         }
 
-        if (options.mass > 0) colliderDesc.setMass(options.mass)
+        if (options.mass > 0) {
+            colliderDesc.setMass(options.mass)
+
+            // Loose objects report their own impacts, so knocking a letter over
+            // is audible. Static scenery does not need the flag — an event
+            // fires when either side of the pair has it, and the rover does.
+            // The threshold is scaled to their weight, well above resting
+            // contact but low enough that a nudge still registers.
+            colliderDesc
+                .setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS)
+                .setContactForceEventThreshold(options.mass * 80)
+        }
         if (options.restitution != null) colliderDesc.setRestitution(options.restitution)
 
-        this.physics.world.createCollider(colliderDesc, body)
+        const collider = this.physics.world.createCollider(colliderDesc, body)
+
+        if (options.impactSound) {
+            this.physics.setImpactMaterial(collider, options.impactSound)
+        }
 
         if (options.startAsleep) {
             body.sleep()

@@ -4,6 +4,7 @@ import type Time from '../engine/Utils/Time'
 import type Controls from './Controls'
 import type Terrain from './Terrain'
 import type { GUI } from 'dat.gui'
+import EventEmitter from '../engine/Utils/EventEmitter'
 
 /**
  * Height the rover drops in from, everywhere.
@@ -14,6 +15,41 @@ import type { GUI } from 'dat.gui'
  */
 export const DROP_IN_HEIGHT = 3
 
+/**
+ * Contact force below which no impact is reported, in newtons.
+ *
+ * The chassis rests on raycast wheels rather than its collider, so it only
+ * touches anything when it genuinely hits it — but loose objects sit on the
+ * terrain permanently, and without a floor here every crate would scrape
+ * continuously.
+ */
+const IMPACT_THRESHOLD = 1400
+
+/**
+ * Ignore anything that would barely be audible anyway.
+ *
+ * Has to stay clear of the per-collider thresholds below, or events the
+ * physics engine bothered to report get discarded here instead.
+ */
+const MIN_IMPACT_STRENGTH = 0.11
+
+/** What was hit, so the sound can match the object rather than being generic. */
+export type ImpactMaterial = 'default' | 'letter' | 'block'
+
+/**
+ * Force treated as a full-volume hit, per material. Anything harder clamps.
+ *
+ * These have to be per-material: a 1 kg crate cannot produce a meaningful
+ * fraction of what the 60 kg rover does, so normalising everything against a
+ * single rover-sized figure put light objects permanently under the audible
+ * floor. Each value is roughly the hardest hit that object can deliver.
+ */
+const IMPACT_REFERENCE_FORCE: Record<ImpactMaterial, number> = {
+    default: 9000, // the rover against terrain or scenery
+    letter: 1400, // a 3 kg block letter
+    block: 500, // a 1 kg crate
+}
+
 export interface PhysicsOptions {
     time: Time
     controls: Controls
@@ -22,7 +58,7 @@ export interface PhysicsOptions {
     config: { debug: boolean; touch: boolean }
 }
 
-export default class Physics {
+export default class Physics extends EventEmitter {
     time: Time
     controls: Controls
     terrain: Terrain
@@ -30,6 +66,7 @@ export default class Physics {
     config: PhysicsOptions['config']
 
     world!: RAPIER.World
+    eventQueue!: RAPIER.EventQueue
     chassisBody!: RAPIER.RigidBody
     vehicleController!: RAPIER.DynamicRayCastVehicleController
 
@@ -92,11 +129,16 @@ export default class Physics {
         brakeRampTime: 0.3,
     }
 
+    /** Collider handle -> what it sounds like when struck. */
+    private impactMaterials = new Map<number, ImpactMaterial>()
+
     // Upside-down detection
     private upsideDownState: 'watching' | 'pending' | 'turning' = 'watching'
     private upsideDownTimeout: number | null = null
 
     constructor(options: PhysicsOptions) {
+        super()
+
         this.time = options.time
         this.controls = options.controls
         this.terrain = options.terrain
@@ -119,6 +161,7 @@ export default class Physics {
     private setWorld(): void {
         const gravity = { x: 0, y: -13, z: 0 }
         this.world = new RAPIER.World(gravity)
+        this.eventQueue = new RAPIER.EventQueue(true)
     }
 
     private setTerrainCollider(): void {
@@ -175,6 +218,8 @@ export default class Physics {
         ).setMass(o.chassisMass)
             .setFriction(0.5)
             .setRestitution(0.1)
+            .setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS)
+            .setContactForceEventThreshold(IMPACT_THRESHOLD)
         this.world.createCollider(chassisColliderDesc, this.chassisBody)
 
         // Create vehicle controller
@@ -323,7 +368,8 @@ export default class Physics {
             for (let s = 0; s < subSteps; s++) {
                 this.world.timestep = subDt
                 this.vehicleController.updateVehicle(subDt)
-                this.world.step()
+                this.world.step(this.eventQueue)
+                this.reportImpacts()
             }
 
             // --- Read chassis transform ---
@@ -474,6 +520,37 @@ export default class Physics {
         this.chassisBody.setLinvel({ x: 0, y: 0, z: 0 }, true)
         this.chassisBody.setAngvel({ x: 0, y: 0, z: 0 }, true)
         this.steering = 0
+    }
+
+    /**
+     * Turn contact forces into `impact` events, loudest first.
+     *
+     * Reported as a 0-1 strength rather than raw newtons so listeners do not
+     * have to know anything about the physics scale.
+     */
+    private reportImpacts(): void {
+        this.eventQueue.drainContactForceEvents((event) => {
+            // Only one side of a pair is ever tagged — the other is the rover
+            // or the terrain, neither of which overrides the object's own sound
+            const material =
+                this.impactMaterials.get(event.collider1()) ??
+                this.impactMaterials.get(event.collider2()) ??
+                'default'
+
+            // Must be normalised against what this object can actually produce
+            const strength = Math.min(
+                event.totalForceMagnitude() / IMPACT_REFERENCE_FORCE[material],
+                1,
+            )
+            if (strength < MIN_IMPACT_STRENGTH) return
+
+            this.trigger('impact', [strength, material])
+        })
+    }
+
+    /** Tag a collider so impacts against it pick the right sound. */
+    setImpactMaterial(collider: RAPIER.Collider, material: ImpactMaterial): void {
+        this.impactMaterials.set(collider.handle, material)
     }
 
     /**

@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import type Time from '../engine/Utils/Time'
 import type Sizes from '../engine/Utils/Sizes'
 import type Camera from '../engine/Camera'
+import type { QualitySettings } from '../engine/Quality'
 import type { GUI } from 'dat.gui'
 import { setRevealFade, setRevealProgress } from './Reveal'
 import Terrain from './Terrain'
@@ -32,6 +33,7 @@ import SectionOverlay from '../ui/SectionOverlay'
 export interface WorldOptions {
     config: { debug: boolean; touch: boolean }
     debug?: GUI
+    quality: QualitySettings
     time: Time
     sizes: Sizes
     camera: Camera
@@ -50,6 +52,7 @@ export interface Reveal {
 export default class World {
     config: WorldOptions['config']
     debug?: GUI
+    quality: QualitySettings
     time: Time
     sizes: Sizes
     camera: Camera
@@ -84,6 +87,7 @@ export default class World {
     constructor(options: WorldOptions) {
         this.config = options.config
         this.debug = options.debug
+        this.quality = options.quality
         this.time = options.time
         this.sizes = options.sizes
         this.camera = options.camera
@@ -271,6 +275,9 @@ export default class World {
         this.shadows = new Shadows({
             time: this.time,
             terrain: this.terrain,
+            physics: this.physics,
+            maxItems: this.quality.maxObjectShadows,
+            maxDistance: this.quality.shadowDistance,
         })
     }
 

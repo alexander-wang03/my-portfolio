@@ -108,6 +108,7 @@ export default class BlockLetters {
                     restitution: 0.2,
                     useConvexHull: true,
                     flatBase: true,
+                    impactSound: 'letter',
                     // Track the glyph rather than a fixed size, so neighbouring
                     // shadows do not bleed into each other at this spacing
                     shadow: { sizeX: glyph.width * 1.2, sizeZ: 1.2 },

@@ -6,6 +6,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import Sizes from './Utils/Sizes'
+import { detectQuality, type QualitySettings } from './Quality'
 import Time from './Utils/Time'
 import Camera from './Camera'
 import World from '../world/World'
@@ -97,6 +98,7 @@ export default class Application {
     time: Time
     sizes: Sizes
     config!: { debug: boolean; touch: boolean }
+    quality: QualitySettings
     debug?: dat.GUI
     scene!: THREE.Scene
     renderer!: THREE.WebGLRenderer
@@ -110,6 +112,7 @@ export default class Application {
 
         this.time = new Time()
         this.sizes = new Sizes()
+        this.quality = detectQuality()
 
         this.setConfig()
         this.setDebug()
@@ -168,7 +171,7 @@ export default class Application {
             powerPreference: 'high-performance',
         })
         this.renderer.setClearColor(0x000000, 1)
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.maxPixelRatio))
         this.renderer.setSize(this.sizes.viewport.width, this.sizes.viewport.height)
 
         this.sizes.on('resize', () => {
@@ -196,21 +199,25 @@ export default class Application {
 
         // Horizontal blur pass (tilt-shift: stronger at top/bottom)
         const blurPassH = new ShaderPass(BlurShader)
+        const blurPassV = new ShaderPass(BlurShader)
         blurPassH.uniforms.uResolution.value.set(
             this.sizes.viewport.width,
             this.sizes.viewport.height,
         )
         blurPassH.uniforms.uStrength.value.set(1, 0)
-        this.composer.addPass(blurPassH)
 
-        // Vertical blur pass
-        const blurPassV = new ShaderPass(BlurShader)
         blurPassV.uniforms.uResolution.value.set(
             this.sizes.viewport.width,
             this.sizes.viewport.height,
         )
         blurPassV.uniforms.uStrength.value.set(0, 1)
-        this.composer.addPass(blurPassV)
+
+        // Two full-screen passes at 5 texture fetches each — the first thing
+        // to go on weaker hardware
+        if (this.quality.blur) {
+            this.composer.addPass(blurPassH)
+            this.composer.addPass(blurPassV)
+        }
 
         // Glow overlay (warm pink radial glow)
         const glowPass = new ShaderPass(GlowShader)
@@ -221,7 +228,7 @@ export default class Application {
 
         this.sizes.on('resize', () => {
             this.composer.setSize(this.sizes.viewport.width, this.sizes.viewport.height)
-            this.composer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+            this.composer.setPixelRatio(Math.min(window.devicePixelRatio, this.quality.maxPixelRatio))
             blurPassH.uniforms.uResolution.value.set(
                 this.sizes.viewport.width,
                 this.sizes.viewport.height,
@@ -237,6 +244,7 @@ export default class Application {
         this.world = new World({
             config: this.config,
             debug: this.debug,
+            quality: this.quality,
             time: this.time,
             sizes: this.sizes,
             camera: this.camera,

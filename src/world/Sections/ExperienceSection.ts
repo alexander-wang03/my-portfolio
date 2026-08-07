@@ -150,6 +150,7 @@ export default class ExperienceSection {
                 position: new THREE.Vector3(bx, by, bz),
                 mass: 1.0,
                 restitution: 0.3,
+                impactSound: 'block',
                 shadow: { sizeX: 0.45, sizeZ: 0.45 },
             })
         }
