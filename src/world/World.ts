@@ -4,6 +4,7 @@ import type Time from '../engine/Utils/Time'
 import type Sizes from '../engine/Utils/Sizes'
 import type Camera from '../engine/Camera'
 import type { QualitySettings } from '../engine/Quality'
+import type { AppConfig } from '../engine/Config'
 import type { GUI } from 'dat.gui'
 import { setRevealFade, setRevealProgress } from './Reveal'
 import Terrain from './Terrain'
@@ -31,7 +32,7 @@ import ContactSection from './Sections/ContactSection'
 import SectionOverlay from '../ui/SectionOverlay'
 
 export interface WorldOptions {
-    config: { debug: boolean; touch: boolean }
+    config: AppConfig
     debug?: GUI
     quality: QualitySettings
     time: Time
@@ -132,12 +133,47 @@ export default class World {
         })
     }
 
+    /**
+     * Present the finished world with no intro at all.
+     *
+     * Everything the reveal animates is a plain 0-1 value, so honouring the
+     * setting is a matter of jumping each to its end state rather than keeping
+     * a second code path in sync. The rover is placed on the ground instead of
+     * dropped, and the camera starts already following it.
+     */
+    private revealInstantly(arrival: { x: number; z: number }): void {
+        this.reveal.matcapsProgress = 1
+        this.reveal.fadeProgress = 1
+        this.reveal.shadowsProgress = 1
+
+        this.physics.resetVehicle(0.4, arrival.x, arrival.z)
+
+        this.followRover = true
+        this.camera.target.set(
+            arrival.x,
+            this.terrain.getHeightAt(arrival.x, arrival.z) + 0.5,
+            arrival.z,
+        )
+        this.camera.targetEased.copy(this.camera.target)
+
+        this.sounds.fadeIn()
+    }
+
     private setReveal(): void {
         this.reveal = {
             matcapsProgress: 0,
             fadeProgress: 0,
             shadowsProgress: 0,
             go: () => {
+                // Land on the linked section when the URL names one, so a
+                // shared link opens where it points rather than at spawn
+                const arrival = this.router.initialSpawn() ?? { x: 0, z: 0 }
+
+                if (this.config.reducedMotion) {
+                    this.revealInstantly(arrival)
+                    return
+                }
+
                 // The world rises out of the ground, then its shadows and
                 // sign boards catch up behind it.
                 gsap.to(this.reveal, { matcapsProgress: 1, duration: 3, ease: 'none' })
@@ -152,25 +188,21 @@ export default class World {
                 // reason, so they also want to trail the objects casting them
                 gsap.to(this.reveal, { shadowsProgress: 1, duration: 2.0, delay: 0.8 })
 
-                // Land on the linked section when the URL names one, so a
-                // shared link opens where it points rather than at spawn
-                const spawn = this.router.initialSpawn() ?? { x: 0, z: 0 }
-
                 // Hold the camera on the spot the rover will land on. Following
                 // it through the air whips the camera up and back down again.
                 this.followRover = false
                 this.followDeadline = this.time.elapsed + 4000
                 this.camera.target.set(
-                    spawn.x,
-                    this.terrain.getHeightAt(spawn.x, spawn.z) + 0.5,
-                    spawn.z,
+                    arrival.x,
+                    this.terrain.getHeightAt(arrival.x, arrival.z) + 0.5,
+                    arrival.z,
                 )
                 // Snap rather than ease — on a deep link the camera would
                 // otherwise still be travelling from spawn as the rover lands
                 this.camera.targetEased.copy(this.camera.target)
 
                 // Held in the air briefly so the fall clears the loading overlay
-                this.physics.dropIn(spawn.x, spawn.z)
+                this.physics.dropIn(arrival.x, arrival.z)
 
                 this.sounds.fadeIn()
             },

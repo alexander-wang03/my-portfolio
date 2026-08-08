@@ -7,6 +7,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import Sizes from './Utils/Sizes'
 import { detectQuality, type QualitySettings } from './Quality'
+import { prefersReducedMotion, type AppConfig } from './Config'
 import Time from './Utils/Time'
 import Camera from './Camera'
 import World from '../world/World'
@@ -97,7 +98,7 @@ export default class Application {
     canvas: HTMLCanvasElement
     time: Time
     sizes: Sizes
-    config!: { debug: boolean; touch: boolean }
+    config!: AppConfig
     quality: QualitySettings
     debug?: dat.GUI
     scene!: THREE.Scene
@@ -145,7 +146,15 @@ export default class Application {
         this.config = {
             debug: window.location.hash === '#debug',
             touch: false,
+            reducedMotion: prefersReducedMotion(),
         }
+
+        // Track it live — visitors do toggle this mid-session, and the setting
+        // is read at the moment each animation starts rather than cached
+        window.matchMedia?.('(prefers-reduced-motion: reduce)')
+            ?.addEventListener?.('change', (event) => {
+                this.config.reducedMotion = event.matches
+            })
 
         window.addEventListener(
             'touchstart',

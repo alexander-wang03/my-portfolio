@@ -438,3 +438,47 @@ html:not(.has-js) .skip-link {
         font-size: 2rem;
     }
 }
+
+/* ── Reduced motion ────────────────────────────────────────────────────
+   The 3D side of this is handled in Camera/World; these are the DOM
+   animations. The panel still needs to arrive noticeably, so it fades in
+   place rather than sliding 400px across the viewport. */
+
+@media (prefers-reduced-motion: reduce) {
+    .section-overlay {
+        right: 24px;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+
+    .section-overlay.visible {
+        opacity: 1;
+    }
+
+    .skip-link {
+        transform: none;
+        transition: none;
+        /* Kept out of the way until focused, without sliding in */
+        clip-path: inset(50%);
+    }
+
+    .skip-link:focus {
+        clip-path: none;
+    }
+
+    .loading-prompt-ready {
+        animation: none;
+    }
+
+    .touch-btn,
+    .touch-btn.active {
+        transform: none;
+    }
+}
+
+/* The narrow breakpoint parks the panel closer to the edge */
+@media (prefers-reduced-motion: reduce) and (max-width: 600px) {
+    .section-overlay {
+        right: 12px;
+    }
+}

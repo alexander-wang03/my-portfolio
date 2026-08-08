@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import gsap from 'gsap'
 import type Time from './Utils/Time'
 import type Sizes from './Utils/Sizes'
+import type { AppConfig } from './Config'
 import type { GUI } from 'dat.gui'
 
 export interface CameraOptions {
@@ -10,7 +11,7 @@ export interface CameraOptions {
     sizes: Sizes
     renderer: THREE.WebGLRenderer
     debug?: GUI
-    config: { debug: boolean; touch: boolean }
+    config: AppConfig
 }
 
 export default class Camera {
@@ -110,6 +111,12 @@ export default class Camera {
             const target = this.angle.items[name]
             if (!target) return
 
+            // The per-section swing is the one piece of camera motion the
+            // visitor never asked for, so hold the default framing instead of
+            // snapping — a jump cut is its own problem. The angles only differ
+            // by ~10°, so nothing is lost but the flourish.
+            if (this.config.reducedMotion) return
+
             gsap.to(this.angle.value, {
                 x: target.x,
                 y: target.y,
@@ -142,7 +149,7 @@ export default class Camera {
         this.setOrbitControls()
     }
 
-    private config: { debug: boolean; touch: boolean }
+    private config: AppConfig
 
     private setInstance(): void {
         this.instance = new THREE.PerspectiveCamera(
@@ -321,6 +328,15 @@ export default class Camera {
     }
 
     reveal(duration = 3): void {
+        // A three second dolly toward the world is exactly the kind of motion
+        // the setting is asking us not to do — open at the resting distance
+        if (this.config.reducedMotion) {
+            this.zoom.value = 0.5
+            this.zoom.targetValue = 0.5
+            this.zoom.distance = this.zoom.minDistance + this.zoom.amplitude * 0.5
+            return
+        }
+
         // Start camera zoomed far out, animate to default
         this.zoom.value = 1.0
         this.zoom.targetValue = 1.0
