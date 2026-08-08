@@ -37,7 +37,7 @@ export default class ExperienceSection {
 
         this.createMilestones(options)
         this.createZone(options)
-        this.createPushableBlocks(options)
+        this.createPushableProps(options)
     }
 
     private createMilestones(options: ExperienceSectionOptions): void {
@@ -111,47 +111,64 @@ export default class ExperienceSection {
         })
     }
 
-    private createPushableBlocks(options: ExperienceSectionOptions): void {
-        const blockSize = 0.35
-        const blockGeo = new THREE.BoxGeometry(blockSize, blockSize, blockSize)
-
-        // The only genuinely colourful props in the world, so they should read
-        // as toys. Tinting each with a saturated version of its own hue
-        // deepens it — the one case where multiplying like with like is what
-        // you want. `beige` was a pale non-colour; emerald is the only cool
-        // note on an orange planet and pops hardest against it.
-        const blocks: { matcap: MatcapName; tint?: string }[] = [
-            { matcap: 'orange', tint: '#ff8c1a' },
-            { matcap: 'yellow', tint: '#ffc61a' },
-            { matcap: 'red', tint: '#ff3b26' },
-            { matcap: 'emeraldGreen' },
+    private createPushableProps(options: ExperienceSectionOptions): void {
+        // The only genuinely colourful things in the world, so they should read
+        // as toys. Tinting each with a saturated version of its own hue deepens
+        // it — the one case where multiplying like with like is what you want.
+        //
+        // Every shape here is convex and low-poly on purpose: `useConvexHull`
+        // then produces a collider identical to the mesh, so they collide
+        // exactly as they look, and the facets suit the art direction. A smooth
+        // sphere would roll like a faceted one and give the game away.
+        const props: { geometry: THREE.BufferGeometry; matcap: MatcapName; tint?: string }[] = [
+            { geometry: new THREE.BoxGeometry(0.52, 0.52, 0.52), matcap: 'orange', tint: '#ff8c1a' },
+            { geometry: new THREE.IcosahedronGeometry(0.34, 0), matcap: 'yellow', tint: '#ffc61a' },
+            { geometry: new THREE.CylinderGeometry(0.26, 0.26, 0.56, 8), matcap: 'red', tint: '#ff3b26' },
+            { geometry: new THREE.ConeGeometry(0.33, 0.62, 7), matcap: 'emeraldGreen' },
+            { geometry: new THREE.OctahedronGeometry(0.37, 0), matcap: 'blue' },
+            { geometry: new THREE.DodecahedronGeometry(0.33, 0), matcap: 'purple' },
         ]
 
-        for (let i = 0; i < blocks.length; i++) {
-            const mat = createMatcapMaterial({
-                matcap: blocks[i].matcap,
-                color: blocks[i].tint ? new THREE.Color(blocks[i].tint) : undefined,
-            })
+        for (let i = 0; i < props.length; i++) {
+            const prop = props[i]
 
-            const mesh = new THREE.Mesh(blockGeo, mat)
+            const mesh = new THREE.Mesh(
+                prop.geometry,
+                createMatcapMaterial({
+                    matcap: prop.matcap,
+                    color: prop.tint ? new THREE.Color(prop.tint) : undefined,
+                }),
+            )
 
-            // Offset by half a step so no block sits on the +Z axis, which is
-            // where a #experience link drops the rover in. The radius is
-            // deterministic for the same reason — with Math.random() a block
+            // Ring angles of 0, 60, ... 300 keep every prop off the +Z axis,
+            // which is where a #experience link drops the rover in. Radius is
+            // deterministic for the same reason — with Math.random() a prop
             // wandered onto the landing spot on some reloads.
-            const angle = ((i + 0.5) / blocks.length) * Math.PI * 2
-            const radius = 3.4 + (i % 2) * 0.5
-            const bx = options.x + Math.cos(angle) * radius
-            const bz = options.z + Math.sin(angle) * radius
-            const by = options.terrain.getHeightAt(bx, bz) + blockSize / 2 + 0.5
+            const angle = (i / props.length) * Math.PI * 2
+            const radius = 4.6 + (i % 2) * 0.4
+            const px = options.x + Math.cos(angle) * radius
+            const pz = options.z + Math.sin(angle) * radius
+
+            // Each shape sits on its own base, so measure rather than assume
+            prop.geometry.computeBoundingBox()
+            const bounds = prop.geometry.boundingBox!
+            const halfHeight = (bounds.max.y - bounds.min.y) / 2
+            const footprint = Math.max(bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z)
 
             options.objects.add({
                 mesh,
-                position: new THREE.Vector3(bx, by, bz),
-                mass: 1.0,
+                position: new THREE.Vector3(
+                    px,
+                    options.terrain.getHeightAt(px, pz) + halfHeight + 0.4,
+                    pz,
+                ),
+                // Light for their size, to match the high brick sound — they
+                // should skitter when nudged rather than shove back
+                mass: 0.4,
                 restitution: 0.3,
+                useConvexHull: true,
                 impactSound: 'block',
-                shadow: { sizeX: 0.45, sizeZ: 0.45 },
+                shadow: { sizeX: footprint * 1.25, sizeZ: footprint * 1.25 },
             })
         }
     }

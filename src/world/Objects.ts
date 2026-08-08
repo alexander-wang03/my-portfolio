@@ -103,11 +103,15 @@ export default class Objects {
             // Loose objects report their own impacts, so knocking a letter over
             // is audible. Static scenery does not need the flag — an event
             // fires when either side of the pair has it, and the rover does.
-            // The threshold is scaled to their weight, well above resting
-            // contact but low enough that a nudge still registers.
+            //
+            // Scaled to the object's own weight (mass * gravity is mass * 13),
+            // so this sits at roughly 15x what it exerts just sitting there.
+            // Lower than that and a prop tumbling across the faceted terrain
+            // clears the bar on every facet edge, turning one roll into a
+            // stream of strikes.
             colliderDesc
                 .setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS)
-                .setContactForceEventThreshold(options.mass * 80)
+                .setContactForceEventThreshold(options.mass * 200)
         }
         if (options.restitution != null) colliderDesc.setRestitution(options.restitution)
 

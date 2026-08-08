@@ -33,6 +33,15 @@ const IMPACT_THRESHOLD = 1400
  */
 const MIN_IMPACT_STRENGTH = 0.11
 
+/**
+ * Milliseconds before the same pair of colliders can report again.
+ *
+ * Long enough that resting, sliding and scraping collapse into one knock,
+ * short enough that deliberately ramming something repeatedly still sounds
+ * each time.
+ */
+const PAIR_IMPACT_COOLDOWN = 400
+
 /** What was hit, so the sound can match the object rather than being generic. */
 export type ImpactMaterial = 'default' | 'letter' | 'block'
 
@@ -46,8 +55,8 @@ export type ImpactMaterial = 'default' | 'letter' | 'block'
  */
 const IMPACT_REFERENCE_FORCE: Record<ImpactMaterial, number> = {
     default: 9000, // the rover against terrain or scenery
-    letter: 1400, // a 3 kg block letter
-    block: 500, // a 1 kg crate
+    letter: 2200, // a 3 kg block letter
+    block: 350, // a 0.4 kg prop
 }
 
 export interface PhysicsOptions {
@@ -131,6 +140,8 @@ export default class Physics extends EventEmitter {
 
     /** Collider handle -> what it sounds like when struck. */
     private impactMaterials = new Map<number, ImpactMaterial>()
+    /** Collider pair -> when it last reported, for `claimPairImpact`. */
+    private pairImpactTimes = new Map<number, number>()
 
     // Upside-down detection
     private upsideDownState: 'watching' | 'pending' | 'turning' = 'watching'
@@ -530,11 +541,14 @@ export default class Physics extends EventEmitter {
      */
     private reportImpacts(): void {
         this.eventQueue.drainContactForceEvents((event) => {
+            const first = event.collider1()
+            const second = event.collider2()
+
             // Only one side of a pair is ever tagged — the other is the rover
             // or the terrain, neither of which overrides the object's own sound
             const material =
-                this.impactMaterials.get(event.collider1()) ??
-                this.impactMaterials.get(event.collider2()) ??
+                this.impactMaterials.get(first) ??
+                this.impactMaterials.get(second) ??
                 'default'
 
             // Must be normalised against what this object can actually produce
@@ -544,8 +558,45 @@ export default class Physics extends EventEmitter {
             )
             if (strength < MIN_IMPACT_STRENGTH) return
 
+            // Checked after the strength test, so a contact too soft to be
+            // heard cannot start the cooldown and mask a real hit behind it
+            if (!this.claimPairImpact(first, second)) return
+
             this.trigger('impact', [strength, material])
         })
+    }
+
+    /**
+     * Rate-limit a single pair of colliders, returning false while it is still
+     * within its cooldown.
+     *
+     * Contact-force events repeat every substep for as long as two surfaces
+     * stay touching — 240 a second at four substeps — and Rapier reports no
+     * start or stop, so nothing here can tell "still resting against it" from
+     * "hit it again". Treating each pair as one impact per cooldown turns a
+     * scrape back into a knock.
+     */
+    private claimPairImpact(first: number, second: number): boolean {
+        // Order-independent key, since the pair can be reported either way round
+        const key = Math.min(first, second) * 1e6 + Math.max(first, second)
+
+        const last = this.pairImpactTimes.get(key)
+        if (last !== undefined && this.time.elapsed - last < PAIR_IMPACT_COOLDOWN) {
+            return false
+        }
+
+        this.pairImpactTimes.set(key, this.time.elapsed)
+
+        // Pairs that stopped touching never come back to clear themselves
+        if (this.pairImpactTimes.size > 512) {
+            for (const [pair, time] of this.pairImpactTimes) {
+                if (this.time.elapsed - time > PAIR_IMPACT_COOLDOWN) {
+                    this.pairImpactTimes.delete(pair)
+                }
+            }
+        }
+
+        return true
     }
 
     /** Tag a collider so impacts against it pick the right sound. */

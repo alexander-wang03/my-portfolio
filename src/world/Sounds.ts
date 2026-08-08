@@ -1,3 +1,5 @@
+import { Howl, Howler } from 'howler'
+import gsap from 'gsap'
 import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'
 import type { ImpactMaterial } from './Physics'
@@ -61,6 +63,39 @@ const VOICES: Record<ImpactMaterial, ImpactVoice> = {
 
 const lerp = (range: [number, number], t: number) => range[0] + (range[1] - range[0]) * t
 
+/**
+ * Recorded impact samples, from folio-2019 (MIT, (c) 2019 Bruno Simon).
+ *
+ * Its playback shape is worth keeping: several takes per material picked at
+ * random, plus a randomised playback rate, so repeated hits never sound
+ * mechanically identical. Volume is squared before use, which makes soft hits
+ * fall away much faster than a linear ramp and matches how impacts actually
+ * behave.
+ */
+interface ImpactSample {
+    sources: string[]
+    volume: [number, number]
+    /** Playback rate is randomised in this range, re-pitching each take. */
+    rate: [number, number]
+}
+
+const SAMPLES: Partial<Record<ImpactMaterial, ImpactSample>> = {
+    // folio's bowling pin, pitched down — playback rate is the only pitch
+    // control a sample has, and it stretches the sound as it lowers it, so
+    // the floor stays off zero to keep hits from turning into drones
+    letter: {
+        sources: ['/sounds/bowling/pin-1.mp3'],
+        volume: [0.35, 1],
+        rate: [0.1, 0.45],
+    },
+    // folio's brick, which is what its own intro letters use
+    block: {
+        sources: [1, 2, 4, 6, 7, 8].map((n) => `/sounds/bricks/brick-${n}.mp3`),
+        volume: [0.2, 0.85],
+        rate: [0.5, 0.75],
+    },
+}
+
 export interface SoundsOptions {
     time: Time
     physics: Physics
@@ -79,6 +114,8 @@ export default class Sounds {
     private started = false
     private noiseBuffer: AudioBuffer | null = null
     private lastImpactAt = 0
+    /** Loaded sample players, keyed by material. */
+    private howls = new Map<ImpactMaterial, Howl[]>()
 
     constructor(options: SoundsOptions) {
         this.time = options.time
@@ -86,6 +123,7 @@ export default class Sounds {
 
         this.setMuteKey()
         this.setVisibility()
+        this.loadSamples()
 
         // Start audio on first user interaction (autoplay policy)
         const start = () => {
@@ -168,19 +206,54 @@ export default class Sounds {
         this.windSource.start()
     }
 
+    private loadSamples(): void {
+        for (const [material, sample] of Object.entries(SAMPLES)) {
+            this.howls.set(
+                material as ImpactMaterial,
+                sample.sources.map((src) => new Howl({ src: [src], preload: true })),
+            )
+        }
+    }
+
     /**
-     * A hit — a low body thump plus a short filtered-noise transient, both
-     * scaled by how hard the contact was. Synthesised rather than sampled,
-     * since this project ships no audio files.
+     * Play a recorded hit, if this material has samples. Returns false when it
+     * does not, so the caller can fall back to synthesis.
+     */
+    private playSample(strength: number, material: ImpactMaterial): boolean {
+        const sample = SAMPLES[material]
+        const players = this.howls.get(material)
+        if (!sample || !players?.length) return false
+
+        // A different take each time, so repeated hits do not sound looped
+        const howl = players[Math.floor(Math.random() * players.length)]
+
+        // Squared, like folio: soft hits drop away far faster than linearly
+        howl.volume(Math.pow(lerp(sample.volume, strength), 2))
+        howl.rate(lerp(sample.rate, Math.random()))
+        howl.play()
+
+        return true
+    }
+
+    /**
+     * A hit. Materials with recorded samples use those; the rest fall back to
+     * a synthesised low thump plus a filtered-noise transient, both scaled by
+     * how hard the contact was.
      */
     playImpact(strength: number, material: ImpactMaterial = 'default'): void {
-        if (!this.ctx || !this.masterGain || this.muted) return
+        if (this.muted) return
 
-        const now = this.ctx.currentTime
+        // Howler runs its own context, so this has to work before the
+        // synthesiser's has been created
+        const now = this.ctx ? this.ctx.currentTime : performance.now() / 1000
 
         // Too many contacts resolve on the same frame to play them all
         if (now - this.lastImpactAt < MIN_IMPACT_INTERVAL) return
         this.lastImpactAt = now
+
+        if (this.playSample(strength, material)) return
+
+        if (!this.ctx || !this.masterGain) return
 
         const voice = VOICES[material] ?? VOICES.default
 
@@ -247,7 +320,21 @@ export default class Sounds {
 
     /** Ramp the master volume up as the world reveals itself. */
     fadeIn(duration = 2): void {
-        if (!this.ctx || !this.masterGain || this.muted) return
+        if (this.muted) return
+
+        // Samples live in Howler's own context, so they need their own ramp
+        const level = { value: 0 }
+        Howler.volume(0)
+        gsap.to(level, {
+            value: 1,
+            duration,
+            ease: 'none',
+            onUpdate: () => {
+                Howler.volume(level.value)
+            },
+        })
+
+        if (!this.ctx || !this.masterGain) return
 
         const now = this.ctx.currentTime
         this.masterGain.gain.cancelScheduledValues(now)
@@ -274,6 +361,7 @@ export default class Sounds {
         window.addEventListener('keydown', (e) => {
             if (e.code === 'KeyM') {
                 this.muted = !this.muted
+                Howler.mute(this.muted)
                 if (this.masterGain) {
                     this.masterGain.gain.value = this.muted ? 0 : 1.0
                 }
@@ -283,6 +371,8 @@ export default class Sounds {
 
     private setVisibility(): void {
         document.addEventListener('visibilitychange', () => {
+            Howler.mute(document.hidden || this.muted)
+
             if (!this.masterGain) return
             if (document.hidden) {
                 this.masterGain.gain.value = 0
