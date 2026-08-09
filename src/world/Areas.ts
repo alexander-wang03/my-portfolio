@@ -3,6 +3,7 @@ import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'
 import type Camera from '../engine/Camera'
 import type Terrain from './Terrain'
+import EventEmitter from '../engine/Utils/EventEmitter'
 import Area, { type AreaOptions } from './Area'
 
 export interface AreasOptions {
@@ -13,7 +14,7 @@ export interface AreasOptions {
     renderer: THREE.WebGLRenderer
 }
 
-export default class Areas {
+export default class Areas extends EventEmitter {
     container: THREE.Object3D
     items: Area[]
     private raycaster: THREE.Raycaster
@@ -25,6 +26,8 @@ export default class Areas {
     private needsUpdate: boolean
 
     constructor(options: AreasOptions) {
+        super()
+
         this.container = new THREE.Object3D()
         this.items = []
         this.raycaster = new THREE.Raycaster()
@@ -58,6 +61,10 @@ export default class Areas {
 
     add(options: Omit<AreaOptions, 'terrain'>): Area {
         const area = new Area({ ...options, terrain: this.terrain })
+
+        // Re-emit, so listeners do not have to subscribe to every area
+        area.on('interact', () => this.trigger('interact'))
+
         this.items.push(area)
         this.container.add(area.container)
         return area

@@ -88,12 +88,67 @@ const SAMPLES: Partial<Record<ImpactMaterial, ImpactSample>> = {
         volume: [0.35, 1],
         rate: [0.1, 0.45],
     },
-    // folio's brick, which is what its own intro letters use
+    // folio's brick, which is what its own intro letters use.
+    //
+    // Near natural speed on purpose. Unlike the pin — a true transient with
+    // 90% of its energy inside 5ms — the bricks spread theirs over ~150ms, so
+    // folio's 0.5 rate stretched that to ~300ms. The result has no attack, and
+    // a hit with no attack reads as arriving late rather than as a soft hit.
     block: {
         sources: [1, 2, 4, 6, 7, 8].map((n) => `/sounds/bricks/brick-${n}.mp3`),
         volume: [0.2, 0.85],
-        rate: [0.5, 0.75],
+        rate: [0.85, 1.15],
     },
+}
+
+/**
+ * Engine model, lifted from folio-2019.
+ *
+ * The trick is that it is ONE seamless loop recorded at a constant RPM, with
+ * playback rate and volume driven by how hard the rover is working. folio ships
+ * a full multi-sample set — idle, low/med/high on and off, maxRPM, startup —
+ * and loads exactly one 9 KB file of it. A layered RPM system is not what makes
+ * this sound good; the eased rev level is.
+ */
+const ENGINE = {
+    src: '/sounds/engine/loop.mp3',
+    /** How much plain speed contributes to the rev level. */
+    speedWeight: 0.85,
+    /** Extra revs while accelerating, so pulling away sounds like effort. */
+    accelerationWeight: 0.25,
+    accelerationScale: 12,
+    /** Revs climb fast and fall away slowly, the way a real throttle behaves. */
+    easeUp: 0.3,
+    easeDown: 0.12,
+    rate: [0.55, 1.5] as [number, number],
+    volume: [0.25, 0.9] as [number, number],
+}
+
+/** One-shot cues, keyed by name. */
+const CUES = {
+    reveal: '/sounds/reveal/reveal-1.mp3',
+    ui: '/sounds/ui/area-1.mp3',
+}
+
+/**
+ * Build a player that complains rather than failing silently.
+ *
+ * Howler swallows a 404 and simply never plays, which is indistinguishable
+ * from a volume or trigger bug — worth guarding while these files are being
+ * swapped for your own.
+ */
+function loadHowl(src: string, extra: { loop?: boolean; volume?: number } = {}): Howl {
+    return new Howl({
+        src: [src],
+        preload: true,
+        ...extra,
+        onloaderror: () => {
+            console.warn(
+                `[Sounds] could not load "${src}". Paths are relative to static/, ` +
+                `so static/sounds/foo.mp3 is referenced as /sounds/foo.mp3.`,
+            )
+        },
+    })
 }
 
 export interface SoundsOptions {
@@ -106,8 +161,8 @@ export default class Sounds {
     private physics: Physics
     private ctx: AudioContext | null = null
     private masterGain: GainNode | null = null
-    private engineOsc: OscillatorNode | null = null
-    private engineGain: GainNode | null = null
+    private engine: Howl | null = null
+    private engineProgress = 0
     private windSource: AudioBufferSourceNode | null = null
     private windGain: GainNode | null = null
     muted = false
@@ -116,6 +171,7 @@ export default class Sounds {
     private lastImpactAt = 0
     /** Loaded sample players, keyed by material. */
     private howls = new Map<ImpactMaterial, Howl[]>()
+    private cues = new Map<keyof typeof CUES, Howl>()
 
     constructor(options: SoundsOptions) {
         this.time = options.time
@@ -130,6 +186,7 @@ export default class Sounds {
             if (this.started) return
             this.started = true
             this.initAudio()
+            this.startEngine()
             window.removeEventListener('click', start)
             window.removeEventListener('keydown', start)
             window.removeEventListener('touchstart', start)
@@ -151,30 +208,7 @@ export default class Sounds {
         this.masterGain.gain.value = 1.0
         this.masterGain.connect(this.ctx.destination)
 
-        this.setupEngine()
         this.setupWind()
-    }
-
-    private setupEngine(): void {
-        if (!this.ctx || !this.masterGain) return
-
-        this.engineGain = this.ctx.createGain()
-        this.engineGain.gain.value = 0
-        this.engineGain.connect(this.masterGain)
-
-        this.engineOsc = this.ctx.createOscillator()
-        this.engineOsc.type = 'sawtooth'
-        this.engineOsc.frequency.value = 40
-
-        // Low-pass filter for a muffled engine sound
-        const filter = this.ctx.createBiquadFilter()
-        filter.type = 'lowpass'
-        filter.frequency.value = 200
-        filter.Q.value = 2
-
-        this.engineOsc.connect(filter)
-        filter.connect(this.engineGain)
-        this.engineOsc.start()
     }
 
     private setupWind(): void {
@@ -210,8 +244,12 @@ export default class Sounds {
         for (const [material, sample] of Object.entries(SAMPLES)) {
             this.howls.set(
                 material as ImpactMaterial,
-                sample.sources.map((src) => new Howl({ src: [src], preload: true })),
+                sample.sources.map((src) => loadHowl(src)),
             )
+        }
+
+        for (const [cue, src] of Object.entries(CUES)) {
+            this.cues.set(cue as keyof typeof CUES, loadHowl(src))
         }
     }
 
@@ -343,18 +381,48 @@ export default class Sounds {
     }
 
     private update(): void {
-        if (!this.ctx || !this.engineGain || !this.engineOsc) return
+        if (!this.engine) return
 
-        const speed = Math.abs(this.physics.forwardSpeed)
-        const maxSpeed = this.physics.options.maxSpeed
+        const speedRatio = Math.min(
+            Math.abs(this.physics.forwardSpeed) / this.physics.options.maxSpeed,
+            1,
+        )
+        // Clamped, because a collision spikes acceleration far past anything
+        // the throttle produces and would blip the revs on every bump
+        const accelerationRatio = Math.min(
+            this.physics.acceleration.length() / ENGINE.accelerationScale,
+            1,
+        )
 
-        // Engine pitch and volume scale with speed
-        const speedRatio = Math.min(speed / maxSpeed, 1)
-        const targetFreq = 40 + speedRatio * 80
-        const targetVol = speedRatio * 0.35
+        const target = Math.min(
+            speedRatio * ENGINE.speedWeight + accelerationRatio * ENGINE.accelerationWeight,
+            1,
+        )
 
-        this.engineOsc.frequency.value += (targetFreq - this.engineOsc.frequency.value) * 0.1
-        this.engineGain.gain.value += (targetVol - this.engineGain.gain.value) * 0.1
+        const ease = target > this.engineProgress ? ENGINE.easeUp : ENGINE.easeDown
+        this.engineProgress += (target - this.engineProgress) * ease
+
+        this.engine.rate(lerp(ENGINE.rate, this.engineProgress))
+        this.engine.volume(lerp(ENGINE.volume, this.engineProgress))
+    }
+
+    /** Start the looping engine. Howler unlocks itself on first interaction. */
+    private startEngine(): void {
+        if (this.engine) return
+
+        this.engine = loadHowl(ENGINE.src, { loop: true, volume: 0 })
+        this.engine.play()
+    }
+
+    /** One-shot cue: the world revealing, or an area being activated. */
+    play(cue: keyof typeof CUES, volume = 1): void {
+        if (this.muted) return
+
+        const howl = this.cues.get(cue)
+        if (!howl) return
+
+        howl.volume(volume)
+        howl.play()
     }
 
     private setMuteKey(): void {

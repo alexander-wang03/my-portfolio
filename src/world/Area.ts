@@ -127,7 +127,13 @@ export default class Area extends EventEmitter {
             new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }),
         )
         this.mouseMesh.rotation.x = -Math.PI / 2
-        this.mouseMesh.position.y = 0.1
+        // Sit on the ground, not at y=0. The container is at y=0 while the
+        // terrain here is 2-3 units up, and since the raycast only tests these
+        // meshes the terrain never blocks it — so the ray sailed past the sign
+        // and struck this plane several units further downrange. The clickable
+        // patch ended up nowhere near the sign it belongs to.
+        this.mouseMesh.position.y =
+            options.terrain.getSurfaceHeightAt(this.position.x, this.position.z) + 0.1
         this.container.add(this.mouseMesh)
 
         this.borderMaterial = this.createBorderMaterial()

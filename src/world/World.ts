@@ -205,6 +205,10 @@ export default class World {
                 this.physics.dropIn(arrival.x, arrival.z)
 
                 this.sounds.fadeIn()
+
+                // Slightly behind the start of the sweep, like folio — it lands
+                // as the world is coming up rather than announcing it
+                gsap.delayedCall(0.4, () => this.sounds.play('reveal'))
             },
         }
 
@@ -443,5 +447,7 @@ export default class World {
             time: this.time,
             physics: this.physics,
         })
+
+        this.areas.on('interact', () => this.sounds.play('ui'))
     }
 }
