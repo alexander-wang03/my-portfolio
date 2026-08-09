@@ -1,14 +1,132 @@
 import * as THREE from 'three'
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'
 import type Terrain from './Terrain'
-import { createMatcapMaterial } from './Materials/Matcap'
+import { createMatcapMaterial, loadMatcapTexture } from './Materials/Matcap'
 
 export interface RoverOptions {
     time: Time
     physics: Physics
     terrain: Terrain
+    /** Null when the model failed to load — a stand-in body is built instead. */
+    model: GLTF | null
 }
+
+/**
+ * Measurements taken from mars_rover_character.glb itself.
+ *
+ * Sketchfab re-exported this from FBX, which renamed every node to `Object_N`
+ * and threw the original names away — so the wheels cannot be found by name.
+ * They are identified by shape instead: four parts sharing one bounding box,
+ * round in two axes and thin in the third. These numbers are what that search
+ * matches against, and everything else derives from them.
+ */
+export const ROVER_MODEL = {
+    path: '/models/rover/mars_rover_character.glb',
+    /** Wheel bounding box in model units: round across x/y, thin in z. */
+    wheelDiameter: 31.26,
+    wheelWidth: 18.68,
+    /** Model-space height of the wheel centres, and of the ground they rest on. */
+    wheelCentreY: -74.8,
+    /** The model points along -X. World forward is +Z, hence the quarter turn. */
+    yaw: Math.PI / 2,
+    /**
+     * Wheel centres in model space, measured. Front is the narrow pair — the
+     * mast sits above it.
+     */
+    frontZ: 44.2,
+    backZ: -22.4,
+    frontHalfTrack: 28.2,
+    backHalfTrack: 40.7,
+}
+
+/**
+ * Target wheel radius in world units. Everything scales from this, since the
+ * wheel sets ride height and therefore how the rover sits and drives.
+ * `Physics.options` is derived from the same figure — keep them in step.
+ */
+const WHEEL_RADIUS = 0.264
+const SCALE = WHEEL_RADIUS / (ROVER_MODEL.wheelDiameter / 2)
+
+/**
+ * How imported base colours are remapped for a scene with no lights.
+ *
+ * Two thirds of this model's materials are near-black (0.01-0.03) because they
+ * were authored for a lit PBR renderer where metalness and specular do the
+ * work. Multiplied into a matcap they render as a flat silhouette, so they
+ * have to be lifted — but lifting alone is what produced the colour cast:
+ * (0.02, 0.03, 0.03) scaled 14x to reach the floor becomes visibly teal, and
+ * (0.02, 0.02, 0.03) scaled 18x becomes blue. Those differences are
+ * quantisation noise in a value the author intended as "black", not a hue
+ * worth preserving, so trust in the source hue falls off with its brightness.
+ */
+const TINT = {
+    /** Luminance floor for dark materials. */
+    minLuminance: 0.38,
+    /** Above this luminance, a low-chroma colour is pulled toward white. */
+    whitenAbove: 0.45,
+    /** Only near-neutral colours get whitened — gold should stay gold. */
+    whitenBelowChroma: 0.25,
+    whitenAmount: 0.6,
+    /**
+     * Multiplied over everything at the end. The model reads warm — cream and
+     * sage where it wants to read white — so this leans the whole palette cool.
+     * Blue exceeds 1 deliberately; it is a multiplier, not a colour.
+     */
+    cast: new THREE.Color(0.94, 0.97, 1.07),
+}
+
+/**
+ * Correction applied to the albedo, after the texture is sampled.
+ *
+ * The cast is baked into the model's own images, not its base colours — the
+ * body texture averages (212, 208, 189) and the arm texture (219, 225, 188),
+ * so the livery's "white" is really olive cream. Every textured material has a
+ * base colour of pure white, so there is nothing to tint: the only place to
+ * reach it is in the shader.
+ */
+const CORRECTION = {
+    /** Lifts blue to bring the olive average back to neutral. */
+    balance: new THREE.Vector3(1.0, 1.0, 1.13),
+    /** Brightness lift, so the body's cream 212 reads as white rather than beige. */
+    gain: 1.12,
+    /** Applied to colours that have real chroma — the livery red. */
+    saturation: 1.4,
+    /**
+     * Applied to colours that have almost none — the body white.
+     *
+     * Below 1, so their residual tint is pulled *out* rather than amplified.
+     * A single saturation figure cannot do both jobs: raising it to make the
+     * red pop was simultaneously exaggerating the white's leftover cast, which
+     * is why the body stayed off-white however the balance was tuned.
+     */
+    neutralise: 0.25,
+    /** Chroma below this counts as neutral; three times it counts as colour. */
+    neutralChroma: 0.06,
+    /**
+     * How far the matcap sample is pulled to grayscale before the multiply.
+     *
+     * The metal matcap is not neutral chrome: it averages (173, 153, 144) — a
+     * warm brown everywhere but its dead centre. Correcting the albedo to
+     * perfect white and then multiplying it by that image paints the cast
+     * straight back on, which is why the body kept reading green-yellow no
+     * matter how the albedo was balanced. 1 keeps the chrome's contrast but
+     * none of its hue.
+     */
+    matcapNeutralise: 1.0,
+    /**
+     * Brightness lift on the matcap sample. Its bright zone peaks around 211,
+     * so even a pure-white albedo could only ever render at ~83% — whites had
+     * no way to pop. Chosen so panels facing the camera land near-white;
+     * the specular hotspot clips to pure white, which chrome should.
+     */
+    matcapGain: 1.6,
+}
+
+const WHITE = new THREE.Color(1, 1, 1)
+const luminance = (c: THREE.Color) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+const chroma = (c: THREE.Color) => Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b)
 
 export default class Rover {
     time: Time
@@ -18,9 +136,8 @@ export default class Rover {
     /** Shadow multiplier, driven by the reveal animation. */
     revealAlpha = 0
 
-    private bodyGroup!: THREE.Group
-    private wheelMeshes: THREE.Mesh[] = []
-    private antennaPivot!: THREE.Object3D
+    private bodyGroup = new THREE.Object3D()
+    private wheelPivots: THREE.Object3D[] = []
 
     constructor(options: RoverOptions) {
         this.time = options.time
@@ -35,229 +152,237 @@ export default class Rover {
             (o.chassisHalfDepth + 0.1) * 0.67,
         )
 
-        this.buildRover()
+        this.container.add(this.bodyGroup)
+
+        if (options.model) this.buildFromModel(options.model)
+        else this.buildPlaceholder()
+
         this.setTick()
     }
 
-    private buildRover(): void {
+    private buildFromModel(gltf: GLTF): void {
+        const scene = gltf.scene
+        scene.updateMatrixWorld(true)
+
+        const wheels = this.findWheels(scene)
+        for (const wheel of wheels) this.detachWheel(wheel)
+
+        this.convertMaterials(scene)
+
+        // Sit the model so its wheel centres line up with where the suspension
+        // holds the physics wheels, rather than with the chassis origin
+        const inner = new THREE.Object3D()
+        inner.rotation.y = ROVER_MODEL.yaw
+        inner.scale.setScalar(SCALE)
+        inner.position.y =
+            -this.physics.options.suspensionRestLength - ROVER_MODEL.wheelCentreY * SCALE
+
+        inner.add(scene)
+        this.bodyGroup.add(inner)
+    }
+
+    /**
+     * Four parts sharing one bounding box, round in two axes and thin in the
+     * third. Measured before any transform is applied, so model space and
+     * world space still agree.
+     */
+    private findWheels(scene: THREE.Object3D): THREE.Mesh[] {
+        const box = new THREE.Box3()
+        const size = new THREE.Vector3()
+        const matches: THREE.Mesh[] = []
+
+        const near = (value: number, target: number) => Math.abs(value - target) < 1
+
+        scene.traverse((node) => {
+            if (!(node instanceof THREE.Mesh)) return
+
+            box.setFromObject(node)
+            box.getSize(size)
+
+            if (
+                near(size.x, ROVER_MODEL.wheelDiameter) &&
+                near(size.y, ROVER_MODEL.wheelDiameter) &&
+                near(size.z, ROVER_MODEL.wheelWidth)
+            ) {
+                matches.push(node)
+            }
+        })
+
+        if (matches.length !== 4) {
+            console.warn(
+                `[Rover] expected 4 wheels in the model, matched ${matches.length}. ` +
+                `They will stay attached to the body and will not turn.`,
+            )
+            return []
+        }
+
+        return matches
+    }
+
+    /**
+     * Move a wheel out of the model and onto its own pivot, centred so it
+     * spins about its axle rather than swinging around the model origin.
+     */
+    private detachWheel(mesh: THREE.Mesh): void {
+        const centre = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3())
+        const worldMatrix = mesh.matrixWorld.clone()
+
+        mesh.removeFromParent()
+
+        // Bake the parent chain into the mesh, then shift its own centre to the
+        // origin — the parent chain is about to be replaced by the pivot
+        worldMatrix.decompose(mesh.position, mesh.quaternion, mesh.scale)
+        mesh.position.sub(centre)
+
+        const oriented = new THREE.Object3D()
+        oriented.rotation.y = ROVER_MODEL.yaw
+        oriented.scale.setScalar(SCALE)
+        oriented.add(mesh)
+
+        const pivot = new THREE.Object3D()
+        pivot.add(oriented)
+
+        this.wheelPivots.push(pivot)
+        this.container.add(pivot)
+    }
+
+    /**
+     * Swap the imported PBR materials for matcaps.
+     *
+     * Not a style preference — `Environment` adds no lights whatsoever, so a
+     * MeshStandardMaterial here renders black. MeshMatcapMaterial needs no
+     * lighting and keeps the model's own colours and textures.
+     */
+    private convertMaterials(scene: THREE.Object3D): void {
+        const matcap = loadMatcapTexture('metal')
+        const converted = new Map<THREE.Material, THREE.MeshMatcapMaterial>()
+
+        scene.traverse((node) => {
+            if (!(node instanceof THREE.Mesh)) return
+
+            const source = node.material as THREE.MeshStandardMaterial
+            let replacement = converted.get(source)
+
+            if (!replacement) {
+                const tint = source.color?.clone() ?? WHITE.clone()
+                const level = luminance(tint)
+
+                if (level < TINT.minLuminance) {
+                    // Lift to the floor, then discard the hue in proportion to
+                    // how far it had to be lifted — a colour that needed 14x
+                    // was black, and its hue is rounding error
+                    const trust = level / TINT.minLuminance
+                    tint.multiplyScalar(TINT.minLuminance / Math.max(level, 1e-4))
+                    tint.lerp(new THREE.Color().setScalar(TINT.minLuminance), 1 - trust)
+                } else if (
+                    level > TINT.whitenAbove &&
+                    chroma(tint) < TINT.whitenBelowChroma
+                ) {
+                    // Cream and sage are meant to read as white; gold is not,
+                    // and its chroma keeps it out of this branch
+                    tint.lerp(WHITE, TINT.whitenAmount)
+                }
+
+                tint.multiply(TINT.cast)
+
+                replacement = new THREE.MeshMatcapMaterial({
+                    matcap,
+                    color: tint,
+                    map: source.map ?? null,
+                })
+                this.applyCorrection(replacement)
+                converted.set(source, replacement)
+            }
+
+            node.material = replacement
+        })
+    }
+
+    /**
+     * White-balance and saturate the albedo inside the shader.
+     *
+     * `material.color` cannot do this: it is a plain multiply, so it can shift
+     * the whole image but never pull the red livery away from the olive it
+     * sits on. Patching after `<map_fragment>` reaches the sampled texture,
+     * while leaving the matcap shading that follows it untouched.
+     */
+    private applyCorrection(material: THREE.MeshMatcapMaterial): void {
+        material.onBeforeCompile = (shader) => {
+            shader.uniforms.uBalance = { value: CORRECTION.balance }
+            shader.uniforms.uGain = { value: CORRECTION.gain }
+            shader.uniforms.uSaturation = { value: CORRECTION.saturation }
+            shader.uniforms.uNeutralise = { value: CORRECTION.neutralise }
+            shader.uniforms.uNeutralChroma = { value: CORRECTION.neutralChroma }
+            shader.uniforms.uMatcapNeutralise = { value: CORRECTION.matcapNeutralise }
+            shader.uniforms.uMatcapGain = { value: CORRECTION.matcapGain }
+
+            shader.fragmentShader = shader.fragmentShader
+                .replace(
+                    '#include <common>',
+                    `#include <common>
+                    uniform vec3 uBalance;
+                    uniform float uGain;
+                    uniform float uSaturation;
+                    uniform float uNeutralise;
+                    uniform float uNeutralChroma;
+                    uniform float uMatcapNeutralise;
+                    uniform float uMatcapGain;`,
+                )
+                .replace(
+                    'vec3 outgoingLight = diffuseColor.rgb * matcapColor.rgb;',
+                    `float matcapLuma = dot(matcapColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+                    matcapColor.rgb =
+                        mix(matcapColor.rgb, vec3(matcapLuma), uMatcapNeutralise) * uMatcapGain;
+                    vec3 outgoingLight = diffuseColor.rgb * matcapColor.rgb;`,
+                )
+                .replace(
+                    '#include <map_fragment>',
+                    `#include <map_fragment>
+                    diffuseColor.rgb *= uBalance * uGain;
+
+                    float correctedLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+                    float correctedChroma =
+                        max(max(diffuseColor.r, diffuseColor.g), diffuseColor.b) -
+                        min(min(diffuseColor.r, diffuseColor.g), diffuseColor.b);
+
+                    // Saturate what is genuinely coloured, neutralise what is
+                    // only faintly tinted — one figure cannot serve both
+                    float colourful = smoothstep(uNeutralChroma, uNeutralChroma * 3.0, correctedChroma);
+                    float amount = mix(uNeutralise, uSaturation, colourful);
+
+                    diffuseColor.rgb = mix(vec3(correctedLuma), diffuseColor.rgb, amount);`,
+                )
+        }
+    }
+
+    /** Stand-in so a failed model load leaves something to drive, not nothing. */
+    private buildPlaceholder(): void {
         const o = this.physics.options
-        // Deliberately all `metal`: it has by far the widest luminance range of
-        // the matcaps (0.20-0.98 vs 0.30-0.45 for the matte ones), so saturated
-        // tints over it stay saturated and every face still reads. The softer
-        // per-part matcaps looked more "correct" but went flat.
-        // reveal: false — the rover drops in from the sky rather than rising
-        // out of the ground, and the reveal wave would bury it for most of
-        // the fall, hiding the drop entirely.
-        const part = (hex: string) =>
-            createMatcapMaterial({
-                matcap: 'metal',
-                color: new THREE.Color(hex),
-                indirect: 0,
-                reveal: false,
-            })
 
-        const bodyMat = part('#ffffff')
-        const deckMat = part('#ffdd40')
-        const mastMat = part('#d0d0d8')
-        const wheelMat = part('#555560')
-        const antennaMat = part('#ff3030')
-        const armMat = part('#c0c0c0')
-
-        this.bodyGroup = new THREE.Group()
-
-        const bodyWidth = o.chassisHalfWidth * 2 * 0.85
-        const bodyHeight = o.chassisHalfHeight * 1.0
-        const bodyDepth = o.chassisHalfDepth * 2 * 0.8
-
-        // === Main chassis box ===
         const body = new THREE.Mesh(
-            new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyDepth),
-            bodyMat,
+            new THREE.BoxGeometry(o.chassisHalfWidth * 2, o.chassisHalfHeight * 2, o.chassisHalfDepth * 2),
+            createMatcapMaterial({ matcap: 'metal', indirect: 0, reveal: false }),
         )
-        body.position.y = o.chassisHalfHeight * 0.3
         this.bodyGroup.add(body)
 
-        // === Equipment deck (gold thermal blanket) ===
-        const deckHeight = bodyHeight * 0.25
-        const deck = new THREE.Mesh(
-            new THREE.BoxGeometry(bodyWidth * 0.9, deckHeight, bodyDepth * 0.7),
-            deckMat,
-        )
-        deck.position.y = body.position.y + bodyHeight / 2 + deckHeight / 2
-        this.bodyGroup.add(deck)
-
-        const deckTop = deck.position.y + deckHeight / 2
-
-        // === Remote Sensing Mast (RSM) — tall with rectangular camera head ===
-        const mastHeight = 0.7
-        const mast = new THREE.Mesh(
-            new THREE.BoxGeometry(0.05, mastHeight, 0.05),
-            mastMat,
-        )
-        mast.position.set(0, deckTop + mastHeight / 2, bodyDepth * 0.2)
-        this.bodyGroup.add(mast)
-
-        // Mast head — rectangular block with stereo cameras
-        const headWidth = 0.2
-        const headHeight = 0.07
-        const headDepth = 0.1
-        const mastHead = new THREE.Mesh(
-            new THREE.BoxGeometry(headWidth, headHeight, headDepth),
-            mastMat,
-        )
-        const headY = mast.position.y + mastHeight / 2 + headHeight / 2
-        mastHead.position.set(0, headY, mast.position.z)
-        this.bodyGroup.add(mastHead)
-
-        // Stereo camera "eyes"
-        const eyeGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.03, 6)
-        eyeGeo.rotateX(Math.PI / 2)
-        for (const side of [-1, 1]) {
-            const eye = new THREE.Mesh(eyeGeo, wheelMat)
-            eye.position.set(side * 0.055, headY, mast.position.z + headDepth / 2 + 0.01)
-            this.bodyGroup.add(eye)
-        }
-
-        // === High-Gain Antenna (HGA) — circular dish on arm ===
-        const dishArmHeight = 0.2
-        const dishArm = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.015, 0.015, dishArmHeight, 4),
-            mastMat,
-        )
-        dishArm.position.set(-bodyWidth * 0.3, deckTop + dishArmHeight / 2, -bodyDepth * 0.15)
-        this.bodyGroup.add(dishArm)
-
-        const dishRadius = 0.13
-        const dish = new THREE.Mesh(
-            new THREE.CylinderGeometry(dishRadius, dishRadius, 0.015, 12),
-            bodyMat,
-        )
-        dish.position.set(dishArm.position.x, deckTop + dishArmHeight + 0.01, dishArm.position.z)
-        dish.rotation.x = -0.2
-        dish.rotation.z = 0.15
-        this.bodyGroup.add(dish)
-
-        // === Robot Arm (simplified 2-segment, semi-folded) ===
-        const armThick = 0.035
-        const arm1Len = 0.3
-        const arm1 = new THREE.Mesh(
-            new THREE.BoxGeometry(armThick, armThick, arm1Len),
-            armMat,
-        )
-        const armBaseY = body.position.y + bodyHeight * 0.15
-        arm1.position.set(bodyWidth * 0.2, armBaseY, bodyDepth / 2 + arm1Len / 2)
-        this.bodyGroup.add(arm1)
-
-        const arm2Len = 0.2
-        const arm2 = new THREE.Mesh(
-            new THREE.BoxGeometry(armThick, armThick, arm2Len),
-            armMat,
-        )
-        arm2.position.set(arm1.position.x, armBaseY - 0.06, arm1.position.z + arm1Len / 2 + arm2Len / 2 - 0.02)
-        arm2.rotation.x = 0.15
-        this.bodyGroup.add(arm2)
-
-        // Arm turret / sample drill
-        const turret = new THREE.Mesh(
-            new THREE.BoxGeometry(0.05, 0.05, 0.05),
-            mastMat,
-        )
-        turret.position.set(arm2.position.x, arm2.position.y - 0.02, arm2.position.z + arm2Len / 2 + 0.02)
-        this.bodyGroup.add(turret)
-
-        // === RTG (Radioisotope Thermoelectric Generator) at rear ===
-        const rtgRadius = 0.055
-        const rtgLen = 0.28
-        const rtg = new THREE.Mesh(
-            new THREE.CylinderGeometry(rtgRadius, rtgRadius * 0.8, rtgLen, 8),
-            antennaMat,
-        )
-        rtg.rotation.x = Math.PI / 2
-        rtg.position.set(0, body.position.y + bodyHeight * 0.25, -bodyDepth / 2 - rtgLen / 2 + 0.05)
-        this.bodyGroup.add(rtg)
-
-        // RTG fin (vertical heat-dissipation fin)
-        const fin = new THREE.Mesh(
-            new THREE.BoxGeometry(0.015, 0.1, rtgLen * 0.7),
-            antennaMat,
-        )
-        fin.position.copy(rtg.position)
-        this.bodyGroup.add(fin)
-
-        // === Suspension Arms (rocker-bogie inspired) ===
-        const wheelY = -o.suspensionRestLength
-        const bodyBottom = body.position.y - bodyHeight / 2
-
-        for (const side of [-1, 1]) {
-            for (const wheelZ of [o.wheelFrontZ, o.wheelBackZ]) {
-                const sx = side * bodyWidth / 2
-                const sy = bodyBottom
-                const sz = 0
-                const ex = side * o.wheelOffsetX
-                const ey = wheelY
-                const ez = wheelZ
-
-                const dx = ex - sx, dy = ey - sy, dz = ez - sz
-                const len = Math.sqrt(dx * dx + dy * dy + dz * dz)
-
-                const arm = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.03, 0.04, len),
-                    armMat,
-                )
-                arm.position.set((sx + ex) / 2, (sy + ey) / 2, (sz + ez) / 2)
-
-                const dir = new THREE.Vector3(dx, dy, dz).normalize()
-                arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir)
-
-                this.bodyGroup.add(arm)
-            }
-        }
-
-        // === UHF Antenna (spring physics) ===
-        this.antennaPivot = new THREE.Object3D()
-        this.antennaPivot.position.set(
-            bodyWidth * 0.3,
-            deckTop,
-            -bodyDepth * 0.2,
-        )
-
-        const uhfAntenna = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.01, 0.01, 0.4, 4),
-            antennaMat,
-        )
-        uhfAntenna.position.y = 0.2
-
-        const uhfTip = new THREE.Mesh(
-            new THREE.SphereGeometry(0.025, 6, 4),
-            antennaMat,
-        )
-        uhfTip.position.y = 0.4
-
-        this.antennaPivot.add(uhfAntenna, uhfTip)
-        this.bodyGroup.add(this.antennaPivot)
-
-        this.container.add(this.bodyGroup)
-
-        // === Wheels (synced individually to physics) ===
-        const wheelGeo = new THREE.CylinderGeometry(
-            o.wheelRadius, o.wheelRadius,
-            o.wheelHalfWidth * 2, 12,
-        )
-        wheelGeo.rotateZ(Math.PI / 2)
+        const wheelGeometry = new THREE.CylinderGeometry(o.wheelRadius, o.wheelRadius, 0.24, 12)
+        wheelGeometry.rotateZ(Math.PI / 2)
+        const wheelMaterial = createMatcapMaterial({
+            matcap: 'metal',
+            color: new THREE.Color('#555560'),
+            indirect: 0,
+            reveal: false,
+        })
 
         for (let i = 0; i < 4; i++) {
-            const wheel = new THREE.Mesh(wheelGeo, wheelMat)
-            this.wheelMeshes.push(wheel)
-            this.container.add(wheel)
+            const pivot = new THREE.Object3D()
+            pivot.add(new THREE.Mesh(wheelGeometry, wheelMaterial))
+            this.wheelPivots.push(pivot)
+            this.container.add(pivot)
         }
     }
 
     private setTick(): void {
-        // Antenna spring state
-        const antennaSpeed = new THREE.Vector2(0, 0)
-        const antennaPos = new THREE.Vector2(0, 0)
-
-        // Reusable objects to avoid per-frame allocation
         const steerQuat = new THREE.Quaternion()
         const spinQuat = new THREE.Quaternion()
         const yAxis = new THREE.Vector3(0, 1, 0)
@@ -265,26 +390,23 @@ export default class Rover {
         const forwardVec = new THREE.Vector3()
 
         this.time.on('tick', () => {
-            // === Sync body to chassis ===
             this.bodyGroup.position.copy(this.physics.chassisPosition)
             this.bodyGroup.quaternion.copy(this.physics.chassisQuaternion)
 
-            // === Sync each wheel independently ===
-            for (let i = 0; i < 4; i++) {
-                this.wheelMeshes[i].position.copy(this.physics.wheelWorldPositions[i])
+            for (let i = 0; i < this.wheelPivots.length; i++) {
+                const pivot = this.wheelPivots[i]
 
-                // Start with chassis orientation
-                this.wheelMeshes[i].quaternion.copy(this.physics.chassisQuaternion)
+                pivot.position.copy(this.physics.wheelWorldPositions[i])
+                pivot.quaternion.copy(this.physics.chassisQuaternion)
 
-                // Apply steering to front wheels (indices 0, 1)
+                // Front wheels only
                 if (i < 2) {
                     steerQuat.setFromAxisAngle(yAxis, this.physics.steering)
-                    this.wheelMeshes[i].quaternion.multiply(steerQuat)
+                    pivot.quaternion.multiply(steerQuat)
                 }
 
-                // Apply wheel spin
                 spinQuat.setFromAxisAngle(xAxis, this.physics.wheelSpinAngles[i])
-                this.wheelMeshes[i].quaternion.multiply(spinQuat)
+                pivot.quaternion.multiply(spinQuat)
             }
 
             // === Update terrain-projected shadow ===
@@ -297,30 +419,9 @@ export default class Rover {
             this.terrain.shadowUniforms.uShadowPos.value.set(pos.x, 0, pos.z)
             this.terrain.shadowUniforms.uShadowAngle.value = heading
 
-            // Fade shadow based on height above ground
             const heightAboveGround = pos.y - terrainY
             const shadowAlpha = THREE.MathUtils.clamp(1.0 - (heightAboveGround - 1.0) / 3.0, 0, 1)
             this.terrain.shadowUniforms.uShadowAlpha.value = shadowAlpha * 0.7 * this.revealAlpha
-
-            // === Antenna spring physics ===
-            const accel = this.physics.acceleration
-            const maxAccel = 2.0
-
-            antennaSpeed.x -= THREE.MathUtils.clamp(accel.x, -maxAccel, maxAccel) * 0.5
-            antennaSpeed.y -= THREE.MathUtils.clamp(accel.z, -maxAccel, maxAccel) * 0.5
-
-            // Pull back to center
-            antennaSpeed.x -= antennaPos.x * antennaPos.length() * 0.05
-            antennaSpeed.y -= antennaPos.y * antennaPos.length() * 0.05
-
-            // Damping
-            antennaSpeed.multiplyScalar(1 - 0.12)
-
-            antennaPos.add(antennaSpeed)
-
-            // Apply rotation in local body space
-            this.antennaPivot.rotation.x = antennaPos.y * 0.1
-            this.antennaPivot.rotation.z = -antennaPos.x * 0.1
         })
     }
 }

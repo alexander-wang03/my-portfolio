@@ -76,7 +76,7 @@ export function createMatcapMaterial(options: MatcapOptions): THREE.ShaderMateri
 const textureLoader = new THREE.TextureLoader()
 const textureCache = new Map<string, THREE.Texture>()
 
-function loadMatcapTexture(name: MatcapName): THREE.Texture {
+export function loadMatcapTexture(name: MatcapName): THREE.Texture {
     if (textureCache.has(name)) return textureCache.get(name)!
 
     const texture = textureLoader.load(`/models/matcaps/${name}.png`)

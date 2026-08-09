@@ -16,48 +16,55 @@ import EventEmitter from '../engine/Utils/EventEmitter'
 export const DROP_IN_HEIGHT = 3
 
 /**
- * Contact force below which no impact is reported, in newtons.
+ * Lowest force the physics engine is asked to report at all, in newtons.
  *
- * The chassis rests on raycast wheels rather than its collider, so it only
- * touches anything when it genuinely hits it — but loose objects sit on the
- * terrain permanently, and without a floor here every crate would scrape
- * continuously.
+ * Kept below every gate in `IMPACT_TUNING` on purpose. Rapier's per-collider
+ * threshold is a poor tuning knob because one chassis collider is party to
+ * every collision the rover has: raising it to quieten the ground silently
+ * raises the bar for hitting a rock too. Filtering happens in
+ * `reportImpacts` instead, where the two can be told apart.
  */
-const IMPACT_THRESHOLD = 1400
-
-/**
- * Ignore anything that would barely be audible anyway.
- *
- * Has to stay clear of the per-collider thresholds below, or events the
- * physics engine bothered to report get discarded here instead.
- */
-const MIN_IMPACT_STRENGTH = 0.11
-
-/**
- * Milliseconds before the same pair of colliders can report again.
- *
- * Long enough that resting, sliding and scraping collapse into one knock,
- * short enough that deliberately ramming something repeatedly still sounds
- * each time.
- */
-const PAIR_IMPACT_COOLDOWN = 400
+const IMPACT_EVENT_FLOOR = 800
 
 /** What was hit, so the sound can match the object rather than being generic. */
-export type ImpactMaterial = 'default' | 'letter' | 'block'
+export type ImpactMaterial = 'terrain' | 'default' | 'letter' | 'block'
+
+interface ImpactTuning {
+    /** Below this, nothing is reported. */
+    minForce: number
+    /** Treated as a full-volume hit; anything harder clamps. */
+    referenceForce: number
+    /** Milliseconds before the same pair of colliders can report again. */
+    cooldown: number
+}
 
 /**
- * Force treated as a full-volume hit, per material. Anything harder clamps.
+ * Per-material gates. All three figures have to be per-material.
  *
- * These have to be per-material: a 1 kg crate cannot produce a meaningful
- * fraction of what the 60 kg rover does, so normalising everything against a
- * single rover-sized figure put light objects permanently under the audible
- * floor. Each value is roughly the hardest hit that object can deliver.
+ * *referenceForce* because a 0.4 kg crate cannot produce a meaningful fraction
+ * of what the 60 kg rover does — normalising everything against one rover-sized
+ * figure puts light objects permanently under the audible floor.
+ *
+ * *minForce* because the ground is a special case. The chassis clears it by
+ * only ~0.19, so on this faceted terrain it grazes constantly, and each graze
+ * is a real contact worth a couple of thousand newtons. Ground contact
+ * therefore needs a much higher bar than anything else — but only ground
+ * contact. Sharing one figure with scenery is what silenced the rover against
+ * rocks and posts while the grazing was being tuned out.
  */
-const IMPACT_REFERENCE_FORCE: Record<ImpactMaterial, number> = {
-    default: 9000, // the rover against terrain or scenery
-    letter: 2200, // a 3 kg block letter
-    block: 350, // a 0.4 kg prop
+const IMPACT_TUNING: Record<ImpactMaterial, ImpactTuning> = {
+    // Landings and drops, not the constant scrape of driving along
+    terrain: { minForce: 6000, referenceForce: 26000, cooldown: 600 },
+    // The rover against static scenery — rocks, sign posts, fences
+    default: { minForce: 1200, referenceForce: 12000, cooldown: 400 },
+    letter: { minForce: 250, referenceForce: 2200, cooldown: 400 }, // a 3 kg block letter
+    block: { minForce: 40, referenceForce: 350, cooldown: 400 }, // a 0.4 kg prop
 }
+
+/** Longest cooldown in the table, for expiring stale entries. */
+const MAX_IMPACT_COOLDOWN = Math.max(
+    ...Object.values(IMPACT_TUNING).map((tuning) => tuning.cooldown),
+)
 
 export interface PhysicsOptions {
     time: Time
@@ -106,15 +113,21 @@ export default class Physics extends EventEmitter {
 
     // Vehicle tuning
     options = {
-        chassisHalfWidth: 0.6,
-        chassisHalfHeight: 0.35,
-        chassisHalfDepth: 0.85,
+        // Sized to mars_rover_character.glb. Height stays low deliberately —
+        // the collider should approximate the body, not swallow the mast.
+        chassisHalfWidth: 0.84,
+        chassisHalfHeight: 0.32,
+        chassisHalfDepth: 0.96,
         chassisMass: 60,
-        wheelRadius: 0.22,
-        wheelHalfWidth: 0.12,
-        wheelFrontZ: 0.65,
-        wheelBackZ: -0.55,
-        wheelOffsetX: 0.55,
+        wheelRadius: 0.264,
+        wheelHalfWidth: 0.16,
+        // Measured off the model's own wheel centres, so the wheels you see
+        // are the wheels the physics drives. The two axles differ in width:
+        // the front pair (under the mast) is the narrower one.
+        wheelFrontZ: 0.75,
+        wheelBackZ: -0.38,
+        wheelFrontOffsetX: 0.48,
+        wheelBackOffsetX: 0.69,
         suspensionRestLength: 0.25,
         suspensionStiffness: 50,
         suspensionDamping: 1.8,
@@ -124,6 +137,10 @@ export default class Physics extends EventEmitter {
         maxEngineForce: 210,
         maxEngineForceBoost: 330,
         maxSpeed: 21,
+        // Boost has to raise the cap, not just the force. The taper below zeroes
+        // engine force at whichever cap applies, so sharing one cap meant boost
+        // only ever changed how quickly you reached the same top speed.
+        maxSpeedBoost: 30,
         maxSteeringAngle: Math.PI * 0.2,
         steeringSpeed: 0.04,
         brakeForce: 18,
@@ -205,7 +222,11 @@ export default class Physics extends EventEmitter {
             scale,
         )
 
-        this.world.createCollider(heightFieldDesc)
+        const collider = this.world.createCollider(heightFieldDesc)
+
+        // Tagged so ground contact can be gated separately from everything
+        // else the rover runs into — see IMPACT_TUNING
+        this.setImpactMaterial(collider, 'terrain')
     }
 
     private setVehicle(): void {
@@ -230,7 +251,7 @@ export default class Physics extends EventEmitter {
             .setFriction(0.5)
             .setRestitution(0.1)
             .setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS)
-            .setContactForceEventThreshold(IMPACT_THRESHOLD)
+            .setContactForceEventThreshold(IMPACT_EVENT_FLOOR)
         this.world.createCollider(chassisColliderDesc, this.chassisBody)
 
         // Create vehicle controller
@@ -244,22 +265,22 @@ export default class Physics extends EventEmitter {
 
         // Front-left
         this.vehicleController.addWheel(
-            { x: -o.wheelOffsetX, y: 0, z: o.wheelFrontZ },
+            { x: -o.wheelFrontOffsetX, y: 0, z: o.wheelFrontZ },
             suspDir, axle, o.suspensionRestLength, o.wheelRadius,
         )
         // Front-right
         this.vehicleController.addWheel(
-            { x: o.wheelOffsetX, y: 0, z: o.wheelFrontZ },
+            { x: o.wheelFrontOffsetX, y: 0, z: o.wheelFrontZ },
             suspDir, axle, o.suspensionRestLength, o.wheelRadius,
         )
         // Back-left
         this.vehicleController.addWheel(
-            { x: -o.wheelOffsetX, y: 0, z: o.wheelBackZ },
+            { x: -o.wheelBackOffsetX, y: 0, z: o.wheelBackZ },
             suspDir, axle, o.suspensionRestLength, o.wheelRadius,
         )
         // Back-right
         this.vehicleController.addWheel(
-            { x: o.wheelOffsetX, y: 0, z: o.wheelBackZ },
+            { x: o.wheelBackOffsetX, y: 0, z: o.wheelBackZ },
             suspDir, axle, o.suspensionRestLength, o.wheelRadius,
         )
 
@@ -334,7 +355,10 @@ export default class Physics extends EventEmitter {
                 : this.options.maxEngineForce
 
             // Taper force as speed approaches max (prevents runaway acceleration)
-            const speedRatio = Math.min(Math.abs(this.forwardSpeed) / this.options.maxSpeed, 1)
+            const topSpeed = this.controls.actions.boost
+                ? this.options.maxSpeedBoost
+                : this.options.maxSpeed
+            const speedRatio = Math.min(Math.abs(this.forwardSpeed) / topSpeed, 1)
             const forceMult = 1 - speedRatio * speedRatio
             const maxForce = baseForce * forceMult
 
@@ -544,26 +568,41 @@ export default class Physics extends EventEmitter {
             const first = event.collider1()
             const second = event.collider2()
 
-            // Only one side of a pair is ever tagged — the other is the rover
-            // or the terrain, neither of which overrides the object's own sound
-            const material =
-                this.impactMaterials.get(first) ??
-                this.impactMaterials.get(second) ??
-                'default'
+            const material = this.impactMaterialFor(first, second)
+            const tuning = IMPACT_TUNING[material]
+
+            const force = event.totalForceMagnitude()
+            if (force < tuning.minForce) return
 
             // Must be normalised against what this object can actually produce
-            const strength = Math.min(
-                event.totalForceMagnitude() / IMPACT_REFERENCE_FORCE[material],
-                1,
-            )
-            if (strength < MIN_IMPACT_STRENGTH) return
+            const strength = Math.min(force / tuning.referenceForce, 1)
 
-            // Checked after the strength test, so a contact too soft to be
-            // heard cannot start the cooldown and mask a real hit behind it
-            if (!this.claimPairImpact(first, second)) return
+            // Checked after the force test, so a contact too soft to be heard
+            // cannot start the cooldown and mask a real hit behind it
+            if (!this.claimPairImpact(first, second, tuning.cooldown)) return
 
             this.trigger('impact', [strength, material])
         })
+    }
+
+    /**
+     * Which of a pair's two tags decides the sound.
+     *
+     * The ground is tagged too, so it cannot simply be "whichever side is
+     * tagged" any more: a letter knocked over onto the terrain is a pair where
+     * both sides have a material, and it should sound like a letter. Terrain
+     * therefore only wins when it is all there is — which is exactly the case
+     * that matters, the rover on the ground.
+     */
+    private impactMaterialFor(first: number, second: number): ImpactMaterial {
+        const firstMaterial = this.impactMaterials.get(first)
+        const secondMaterial = this.impactMaterials.get(second)
+
+        if (firstMaterial && firstMaterial !== 'terrain') return firstMaterial
+        if (secondMaterial && secondMaterial !== 'terrain') return secondMaterial
+        if (firstMaterial === 'terrain' || secondMaterial === 'terrain') return 'terrain'
+
+        return 'default'
     }
 
     /**
@@ -576,12 +615,12 @@ export default class Physics extends EventEmitter {
      * "hit it again". Treating each pair as one impact per cooldown turns a
      * scrape back into a knock.
      */
-    private claimPairImpact(first: number, second: number): boolean {
+    private claimPairImpact(first: number, second: number, cooldown: number): boolean {
         // Order-independent key, since the pair can be reported either way round
         const key = Math.min(first, second) * 1e6 + Math.max(first, second)
 
         const last = this.pairImpactTimes.get(key)
-        if (last !== undefined && this.time.elapsed - last < PAIR_IMPACT_COOLDOWN) {
+        if (last !== undefined && this.time.elapsed - last < cooldown) {
             return false
         }
 
@@ -590,7 +629,7 @@ export default class Physics extends EventEmitter {
         // Pairs that stopped touching never come back to clear themselves
         if (this.pairImpactTimes.size > 512) {
             for (const [pair, time] of this.pairImpactTimes) {
-                if (this.time.elapsed - time > PAIR_IMPACT_COOLDOWN) {
+                if (this.time.elapsed - time > MAX_IMPACT_COOLDOWN) {
                     this.pairImpactTimes.delete(pair)
                 }
             }

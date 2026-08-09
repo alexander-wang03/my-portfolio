@@ -11,7 +11,8 @@ import Terrain from './Terrain'
 import Environment from './Environment'
 import Controls from './Controls'
 import Physics from './Physics'
-import Rover from './Rover'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import Rover, { ROVER_MODEL } from './Rover'
 import DustParticles from './Particles/DustParticles'
 import AmbientDust from './Particles/AmbientDust'
 import Zones from './Zones'
@@ -117,7 +118,12 @@ export default class World {
         this.setSections()
         this.setRouter()
         onProgress?.(0.8)
-        this.setRover()
+
+        // The only asset the world waits on, so the loading bar finally
+        // reflects something real rather than a synthetic ramp
+        const roverModel = await this.loadRoverModel()
+        onProgress?.(0.95)
+        this.setRover(roverModel)
         this.setDust()
         this.setAmbientDust()
         this.setSounds()
@@ -417,11 +423,22 @@ export default class World {
         this.container.add(contact.container)
     }
 
-    private setRover(): void {
+    /** Null on failure — Rover falls back to a stand-in body. */
+    private async loadRoverModel(): Promise<GLTF | null> {
+        try {
+            return await new GLTFLoader().loadAsync(ROVER_MODEL.path)
+        } catch (error) {
+            console.error(`[World] could not load ${ROVER_MODEL.path}`, error)
+            return null
+        }
+    }
+
+    private setRover(model: GLTF | null): void {
         this.rover = new Rover({
             time: this.time,
             physics: this.physics,
             terrain: this.terrain,
+            model,
         })
         this.container.add(this.rover.container)
     }

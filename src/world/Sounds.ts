@@ -28,7 +28,17 @@ interface ImpactVoice {
 }
 
 const VOICES: Record<ImpactMaterial, ImpactVoice> = {
-    // Rover against terrain, rock or scenery — heavy, sags away fast
+    // Landing on the ground — the heaviest and dullest of the set
+    terrain: {
+        pitch: [48, 84],
+        pitchDrop: 0.5,
+        bodyGain: 0.24,
+        bodyDecay: 0.28,
+        cutoff: [240, 560],
+        noiseGain: 0.1,
+        noiseDecay: 0.15,
+    },
+    // Rover against rock or scenery — heavy, sags away fast
     default: {
         pitch: [58, 96],
         pitchDrop: 0.55,
@@ -80,6 +90,22 @@ interface ImpactSample {
 }
 
 const SAMPLES: Partial<Record<ImpactMaterial, ImpactSample>> = {
+    // The rover was the last thing still synthesised, and the sampled engine
+    // loop is far louder than the oscillator it replaced — a 60-96 Hz thump
+    // simply disappeared underneath it. These sit well clear of the engine.
+    default: {
+        sources: [1, 3, 4, 5].map((n) => `/sounds/car-hits/car-hit-${n}.mp3`),
+        volume: [0.35, 0.9],
+        rate: [0.8, 1.1],
+    },
+    // Landing, using the same takes pitched down and held back. Ground contact
+    // is the one impact that happens whether or not you did anything, so it
+    // stays the quietest — a thump under the engine, not a crash over it.
+    terrain: {
+        sources: [1, 3, 4, 5].map((n) => `/sounds/car-hits/car-hit-${n}.mp3`),
+        volume: [0.2, 0.55],
+        rate: [0.7, 0.9],
+    },
     // folio's bowling pin, pitched down — playback rate is the only pitch
     // control a sample has, and it stretches the sound as it lowers it, so
     // the floor stays off zero to keep hits from turning into drones
