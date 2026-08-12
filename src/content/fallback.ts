@@ -82,6 +82,15 @@ export function renderFallbackHtml(): string {
         <footer>
             <p>This site is normally an interactive 3D world &mdash; ${escape(TAGLINE)} &mdash;
             which needs JavaScript and WebGL. You are seeing the plain text version.</p>
+            <!-- The 3D world carries its own credits footer, which is hidden
+                 here; the attribution still has to reach this version. -->
+            <p>Rover model
+            <a href="https://sketchfab.com/3d-models/mars-rover-character-9cbf5d8c68e140b28916739705520901">&ldquo;Mars Rover Character&rdquo;</a>
+            by BrentNoll, licensed
+            <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a>, modified.
+            Matcaps and impact sounds from
+            <a href="https://github.com/brunosimon/folio-2019">folio-2019</a>
+            by Bruno Simon (MIT).</p>
         </footer>
     </main>`
 }

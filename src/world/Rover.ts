@@ -16,6 +16,14 @@ export interface RoverOptions {
 /**
  * Measurements taken from mars_rover_character.glb itself.
  *
+ * The model is "Mars Rover Character" by BrentNoll, licensed CC BY 4.0:
+ * https://sketchfab.com/3d-models/mars-rover-character-9cbf5d8c68e140b28916739705520901
+ *
+ * The licence requires credit and a note of what was changed, both of which
+ * live in CREDITS.md and in the site's own footer. The changes are here: it is
+ * re-scaled, its wheels are detached onto pivots so they steer and spin, and
+ * its PBR materials are replaced by white-balanced matcaps.
+ *
  * Sketchfab re-exported this from FBX, which renamed every node to `Object_N`
  * and threw the original names away — so the wheels cannot be found by name.
  * They are identified by shape instead: four parts sharing one bounding box,

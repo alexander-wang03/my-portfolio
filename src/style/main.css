@@ -141,6 +141,135 @@ html:not(.has-js) .skip-link {
     height: 100%;
 }
 
+/* ── Asset Credits ─────────────────────────────────────────────────── */
+
+/* Parked bottom-centre: the joystick owns the bottom-left on touch and the
+   boost/brake buttons the bottom-right, and the section panel slides in from
+   the right edge. Kept above the canvas but click-through, so the only thing
+   it can intercept is a click on one of its own links. */
+.credits {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    max-width: min(90vw, 640px);
+    text-align: center;
+    pointer-events: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.68rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.28);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.credits-text {
+    transition: opacity 0.5s ease;
+}
+
+/* Fades out first, on its own, so the tag below never appears alongside the
+   text it is supposed to replace */
+.credits--fading .credits-text {
+    opacity: 0;
+}
+
+/* Only useful once the line has retired — before that it would just label
+   text that is already on screen */
+.credits-tag {
+    display: none;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: inherit;
+    text-shadow: inherit;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: color 0.15s ease;
+}
+
+.credits-tag:hover,
+.credits-tag:focus-visible {
+    color: rgba(255, 144, 67, 0.9);
+}
+
+/* Retired, not removed. CC BY and MIT both want the attribution to stay with
+   the work, so the full line collapses to a tag that brings it back rather
+   than leaving the page. Taken out of flow so the tag can centre on its own. */
+.credits--retired .credits-text {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    width: max-content;
+    max-width: min(90vw, 640px);
+    opacity: 0;
+}
+
+/* An animation rather than a transition: `display` changes in the same frame,
+   and a transition has no start value to run from when an element appears */
+.credits--retired .credits-tag {
+    display: inline-block;
+    animation: credits-tag-in 0.35s ease;
+}
+
+@keyframes credits-tag-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Beats `.credits a` below, which would otherwise leave an invisible strip of
+   clickable links sitting over the world */
+.credits--retired .credits-text a {
+    pointer-events: none;
+}
+
+.credits--retired:hover .credits-text,
+.credits--retired:focus-within .credits-text {
+    opacity: 1;
+}
+
+.credits--retired:hover .credits-text a,
+.credits--retired:focus-within .credits-text a {
+    pointer-events: auto;
+}
+
+.credits a {
+    pointer-events: auto;
+    color: rgba(255, 255, 255, 0.45);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.credits a:hover,
+.credits a:focus {
+    color: rgba(255, 144, 67, 0.95);
+    border-bottom-color: rgba(255, 144, 67, 0.6);
+}
+
+/* Hidden until the world is actually on screen.
+ *
+ * The loading screen is built in JS, so for the first frames after paint there
+ * is nothing covering the viewport and the credits used to flash there. Hiding
+ * them by default also covers the plain-HTML version for good, which has its
+ * own footer in the page flow and does not want a fixed one over it. */
+.credits {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+
+.has-js .credits--shown {
+    visibility: visible;
+    opacity: 1;
+}
+
 .has-cursor-grab {
     cursor: grab;
 }
@@ -309,6 +438,12 @@ html:not(.has-js) .skip-link {
     .section-overlay.visible {
         right: 12px;
     }
+    /* Narrow enough to stay in the gap between the joystick and the buttons */
+    .credits {
+        max-width: calc(100vw - 220px);
+        font-size: 0.6rem;
+        line-height: 1.4;
+    }
 }
 
 .card-subtitle {
@@ -473,6 +608,18 @@ html:not(.has-js) .skip-link {
     .touch-btn,
     .touch-btn.active {
         transform: none;
+    }
+
+    /* The credits still appear and step aside — it just happens as a switch
+       rather than a fade. `transform` stays, since it is what centres them. */
+    .credits,
+    .credits-text,
+    .credits-tag {
+        transition: none;
+    }
+
+    .credits--retired .credits-tag {
+        animation: none;
     }
 }
 

@@ -12,6 +12,7 @@ import Time from './Utils/Time'
 import Camera from './Camera'
 import World from '../world/World'
 import LoadingScreen from '../ui/LoadingScreen'
+import { revealCredits } from '../ui/Credits'
 
 export interface ApplicationOptions {
     canvas: HTMLCanvasElement
@@ -140,6 +141,10 @@ export default class Application {
         this.camera.reveal()
         this.world.reveal.go()
         this.world.controls.enabled = true
+
+        // Held back until here — before this the loading screen either has not
+        // been built yet, or is covering them
+        revealCredits()
     }
 
     private setConfig(): void {

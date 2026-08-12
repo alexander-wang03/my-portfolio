@@ -39,6 +39,27 @@
     <!-- Nothing here is describable, so keep it out of the accessibility tree -->
     <canvas class="js-canvas" aria-hidden="true"></canvas>
 
+    <!-- Deliberately outside the fallback, which JS hides: CC BY and MIT both
+         require attribution to travel with the work itself, so this has to
+         stay visible to someone playing the 3D world. See CREDITS.md. -->
+    <footer class="credits">
+        <!-- Focusable so a click or a tab brings the full line back: the
+             reveal is :focus-within, which needs something to focus. -->
+        <button class="credits-tag" type="button" aria-label="Show asset credits">Credits</button>
+        <span class="credits-text">
+        Rover model
+        <a href="https://sketchfab.com/3d-models/mars-rover-character-9cbf5d8c68e140b28916739705520901"
+           rel="noopener" target="_blank">&ldquo;Mars Rover Character&rdquo;</a>
+        by BrentNoll, licensed
+        <a href="https://creativecommons.org/licenses/by/4.0/"
+           rel="license noopener" target="_blank">CC&nbsp;BY&nbsp;4.0</a>, modified.
+        Matcaps and impact sounds from
+        <a href="https://github.com/brunosimon/folio-2019"
+           rel="noopener" target="_blank">folio-2019</a>
+        by Bruno Simon (MIT).
+        </span>
+    </footer>
+
     <script type="module" src="./main.ts"></script>
 </body>
 </html>

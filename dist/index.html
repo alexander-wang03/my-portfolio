@@ -29,8 +29,8 @@
          for visitors who are getting the 3D world. -->
     <script>document.documentElement.classList.add('has-js')</script>
 
-  <script type="module" crossorigin src="/assets/index-C8G3MI3p.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-mD18GPOO.css">
+  <script type="module" crossorigin src="/assets/index-DyA8-Y3C.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CWW70mfx.css">
 </head>
 <body>
     <!-- First in tab order, so assistive tech and keyboard users reach the
@@ -39,6 +39,27 @@
 
     <!-- Nothing here is describable, so keep it out of the accessibility tree -->
     <canvas class="js-canvas" aria-hidden="true"></canvas>
+
+    <!-- Deliberately outside the fallback, which JS hides: CC BY and MIT both
+         require attribution to travel with the work itself, so this has to
+         stay visible to someone playing the 3D world. See CREDITS.md. -->
+    <footer class="credits">
+        <!-- Focusable so a click or a tab brings the full line back: the
+             reveal is :focus-within, which needs something to focus. -->
+        <button class="credits-tag" type="button" aria-label="Show asset credits">Credits</button>
+        <span class="credits-text">
+        Rover model
+        <a href="https://sketchfab.com/3d-models/mars-rover-character-9cbf5d8c68e140b28916739705520901"
+           rel="noopener" target="_blank">&ldquo;Mars Rover Character&rdquo;</a>
+        by BrentNoll, licensed
+        <a href="https://creativecommons.org/licenses/by/4.0/"
+           rel="license noopener" target="_blank">CC&nbsp;BY&nbsp;4.0</a>, modified.
+        Matcaps and impact sounds from
+        <a href="https://github.com/brunosimon/folio-2019"
+           rel="noopener" target="_blank">folio-2019</a>
+        by Bruno Simon (MIT).
+        </span>
+    </footer>
 
 
     <main class="fallback" id="fallback">
@@ -109,6 +130,15 @@
         <footer>
             <p>This site is normally an interactive 3D world &mdash; My World &mdash;
             which needs JavaScript and WebGL. You are seeing the plain text version.</p>
+            <!-- The 3D world carries its own credits footer, which is hidden
+                 here; the attribution still has to reach this version. -->
+            <p>Rover model
+            <a href="https://sketchfab.com/3d-models/mars-rover-character-9cbf5d8c68e140b28916739705520901">&ldquo;Mars Rover Character&rdquo;</a>
+            by BrentNoll, licensed
+            <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a>, modified.
+            Matcaps and impact sounds from
+            <a href="https://github.com/brunosimon/folio-2019">folio-2019</a>
+            by Bruno Simon (MIT).</p>
         </footer>
     </main>
 </body>
