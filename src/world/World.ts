@@ -282,6 +282,17 @@ export default class World {
 
         this.container.add(this.physics.debugContainer)
 
+        // Recovering from a fall moves the rover the width of the map. Easing
+        // the camera after it means a long involuntary pan from inside the
+        // void, so it cuts to the new position the way the reveal does.
+        this.physics.on('respawn', (...args: unknown[]) => {
+            const x = args[0] as number
+            const z = args[1] as number
+
+            this.camera.target.set(x, this.terrain.getHeightAt(x, z) + 0.5, z)
+            this.camera.targetEased.copy(this.camera.target)
+        })
+
         this.time.on('tick', () => {
             if (!this.followRover) {
                 const landed = this.physics.wheelGrounded.some(Boolean)

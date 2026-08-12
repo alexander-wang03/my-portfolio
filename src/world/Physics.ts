@@ -16,6 +16,27 @@ import EventEmitter from '../engine/Utils/EventEmitter'
 export const DROP_IN_HEIGHT = 3
 
 /**
+ * Y below which the rover counts as lost.
+ *
+ * The heightfield ends at the edge of the terrain mesh, so past the boundary
+ * there is nothing underneath at all — driving off is an unbounded fall that
+ * nothing else in the simulation will ever recover from. Terrain heights span
+ * 0 to `heightScale`, so anything below this is unambiguous.
+ *
+ * Deep enough that the fall reads as a fall. Catching it at the boundary
+ * instead would also cancel a jump that clears the edge and lands back on.
+ */
+const FALL_FLOOR = -12
+
+/**
+ * How far inside the boundary a spot has to be to be worth returning to.
+ *
+ * Putting the rover back exactly where it went over sends it straight off
+ * again, and a recovery that has to be repeated is worse than no recovery.
+ */
+const RESPAWN_EDGE_MARGIN = 8
+
+/**
  * Lowest force the physics engine is asked to report at all, in newtons.
  *
  * Kept below every gate in `IMPACT_TUNING` on purpose. Rapier's per-collider
@@ -163,6 +184,9 @@ export default class Physics extends EventEmitter {
     // Upside-down detection
     private upsideDownState: 'watching' | 'pending' | 'turning' = 'watching'
     private upsideDownTimeout: number | null = null
+
+    /** Last place the rover was on the ground and well inside the map. */
+    private lastSafePosition = { x: 0, z: 0 }
 
     constructor(options: PhysicsOptions) {
         super()
@@ -461,6 +485,9 @@ export default class Physics extends EventEmitter {
             // --- Upside-down detection ---
             this.checkUpsideDown()
 
+            // --- Fell off the map ---
+            this.checkOutOfBounds()
+
             // --- Compute wheel world positions + state ---
             for (let i = 0; i < 4; i++) {
                 const cp = this.vehicleController.wheelChassisConnectionPointCs(i)
@@ -480,6 +507,9 @@ export default class Physics extends EventEmitter {
                 this.wheelGrounded[i] = this.vehicleController.wheelIsInContact(i)
                 this.wheelSpinAngles[i] = this.vehicleController.wheelRotation(i) ?? 0
             }
+
+            // Needs the wheel contact flags above, so it trails the loop
+            this.updateSafePosition()
 
             // --- Update debug visuals ---
             if (this.chassisMesh) {
@@ -540,6 +570,56 @@ export default class Physics extends EventEmitter {
     }
 
     /**
+     * Remember somewhere worth being put back to.
+     *
+     * Recorded continuously rather than only at section arrivals, so a
+     * recovery lands where the visitor actually was. Being returned to spawn
+     * after going over the edge in the far corner of a 200-unit map is a
+     * longer punishment than the mistake deserves.
+     */
+    private updateSafePosition(): void {
+        // Three wheels down means genuinely on the ground, rather than
+        // clipping a lip or already tipping over the boundary
+        let grounded = 0
+        for (const inContact of this.wheelGrounded) if (inContact) grounded++
+        if (grounded < 3) return
+
+        const limit = this.terrain.size / 2 - RESPAWN_EDGE_MARGIN
+        const { x, z } = this.chassisPosition
+        if (Math.abs(x) > limit || Math.abs(z) > limit) return
+
+        this.lastSafePosition.x = x
+        this.lastSafePosition.z = z
+    }
+
+    /**
+     * Put the rover back on the map once it has fallen past saving.
+     *
+     * Checked against height alone. It covers driving over the edge and
+     * tunnelling through the terrain equally, and neither needs telling apart
+     * — below the floor there is no way back under its own power.
+     */
+    private checkOutOfBounds(): void {
+        if (this.chassisPosition.y > FALL_FLOOR) return
+
+        // A pending flip is measured against an orientation from before the
+        // fall, and would fire seconds later to teleport the rover a second
+        // time from wherever it had got to
+        if (this.upsideDownTimeout !== null) {
+            window.clearTimeout(this.upsideDownTimeout)
+            this.upsideDownTimeout = null
+        }
+        this.upsideDownState = 'watching'
+
+        const { x, z } = this.lastSafePosition
+        this.resetVehicle(DROP_IN_HEIGHT, x, z)
+
+        // The camera is still pointed down the hole, and easing it back across
+        // the map is a long involuntary pan — World snaps it instead
+        this.trigger('respawn', [x, z])
+    }
+
+    /**
      * Drop the rover in at a point on the map. Defaults to spawn; the reveal
      * uses a taller drop, and the router uses this to jump between sections.
      */
@@ -555,6 +635,12 @@ export default class Physics extends EventEmitter {
         this.chassisBody.setLinvel({ x: 0, y: 0, z: 0 }, true)
         this.chassisBody.setAngvel({ x: 0, y: 0, z: 0 }, true)
         this.steering = 0
+
+        // Everything downstream reads these rather than the body, and this can
+        // be called mid-tick — leaving them stale draws one frame of the rover
+        // still at the place it was teleported away from
+        this.chassisPosition.set(x, spawnHeight, z)
+        this.chassisQuaternion.copy(upright)
     }
 
     /**
