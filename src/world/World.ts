@@ -163,6 +163,9 @@ export default class World {
         this.camera.targetEased.copy(this.camera.target)
 
         this.sounds.fadeIn()
+        // Reduced motion asks for less movement, not less feedback — this path
+        // was the one route into the world that entered in silence
+        this.sounds.play('reveal')
     }
 
     private setReveal(): void {
@@ -212,9 +215,10 @@ export default class World {
 
                 this.sounds.fadeIn()
 
-                // Slightly behind the start of the sweep, like folio — it lands
-                // as the world is coming up rather than announcing it
-                gsap.delayedCall(0.4, () => this.sounds.play('reveal'))
+                // On the click, not behind it. The sample's own peak is 0.40s
+                // in, so the emphasis still lands with the world coming up —
+                // delaying playback as well just left the click silent.
+                this.sounds.play('reveal')
             },
         }
 

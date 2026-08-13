@@ -189,6 +189,11 @@ export default class Sounds {
     private masterGain: GainNode | null = null
     private engine: Howl | null = null
     private engineProgress = 0
+    /**
+     * 0-1 ambience level, ramped by `fadeIn`. Public so gsap can tween it;
+     * read once per tick by `update`.
+     */
+    ambience = 0
     private windSource: AudioBufferSourceNode | null = null
     private windGain: GainNode | null = null
     muted = false
@@ -382,21 +387,20 @@ export default class Sounds {
         return buffer
     }
 
-    /** Ramp the master volume up as the world reveals itself. */
+    /**
+     * Ramp the ambience up as the world reveals itself.
+     *
+     * Ambience only — deliberately not `Howler.volume`, which is global. This
+     * runs on the click that enters the world, so a global ramp muted the very
+     * sounds that click is supposed to produce: the reveal cue fired 0.4s in,
+     * at 20% of a two-second ramp, and the rover's landing thump not much
+     * later. Anything one-shot now plays at its own level immediately, and
+     * only the engine and wind fade up underneath it.
+     */
     fadeIn(duration = 2): void {
         if (this.muted) return
 
-        // Samples live in Howler's own context, so they need their own ramp
-        const level = { value: 0 }
-        Howler.volume(0)
-        gsap.to(level, {
-            value: 1,
-            duration,
-            ease: 'none',
-            onUpdate: () => {
-                Howler.volume(level.value)
-            },
-        })
+        gsap.to(this, { ambience: 1, duration, ease: 'none' })
 
         if (!this.ctx || !this.masterGain) return
 
@@ -429,7 +433,8 @@ export default class Sounds {
         this.engineProgress += (target - this.engineProgress) * ease
 
         this.engine.rate(lerp(ENGINE.rate, this.engineProgress))
-        this.engine.volume(lerp(ENGINE.volume, this.engineProgress))
+        // The engine carries the fade that used to be applied globally
+        this.engine.volume(lerp(ENGINE.volume, this.engineProgress) * this.ambience)
     }
 
     /** Start the looping engine. Howler unlocks itself on first interaction. */
