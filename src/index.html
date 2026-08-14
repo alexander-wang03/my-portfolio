@@ -36,6 +36,11 @@
          readable version before anything else. Hidden until focused. -->
     <a class="skip-link" href="#fallback">Skip the 3D world &mdash; view the text version</a>
 
+    <!-- Filled in at build time from portfolio.ts. Static markup on purpose:
+         built in JS it could not appear until the application bundle had
+         downloaded, which is the wait it exists to cover. -->
+    <!--loading-screen-->
+
     <!-- Nothing here is describable, so keep it out of the accessibility tree -->
     <canvas class="js-canvas" aria-hidden="true"></canvas>
 

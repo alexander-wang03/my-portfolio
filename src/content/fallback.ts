@@ -1,3 +1,4 @@
+import { escapeHtml } from './html'
 import {
     ABOUT,
     CONTACT_LINKS,
@@ -19,12 +20,7 @@ import {
  * imports; `portfolio.ts` is plain data and safe to pull in.
  */
 
-const escape = (value: string): string =>
-    value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+const escape = escapeHtml
 
 export function renderFallbackHtml(): string {
     const projects = PROJECTS.map(

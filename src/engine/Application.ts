@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import * as dat from 'dat.gui'
+import type { GUI } from 'dat.gui'
 import RAPIER from '@dimforge/rapier3d-compat'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
@@ -16,6 +16,15 @@ import { revealCredits } from '../ui/Credits'
 
 export interface ApplicationOptions {
     canvas: HTMLCanvasElement
+    /**
+     * Debug panel, when the visitor asked for one with `#debug`.
+     *
+     * Passed in rather than constructed here so that dat.gui can be imported
+     * on demand by `main.ts`. Imported here it would be bundled into the
+     * application chunk and downloaded by everyone, to build a panel almost
+     * nobody opens.
+     */
+    debug?: GUI
 }
 
 const BlurShader = {
@@ -96,12 +105,13 @@ const GlowShader = {
 }
 
 export default class Application {
+    private options: ApplicationOptions
     canvas: HTMLCanvasElement
     time: Time
     sizes: Sizes
     config!: AppConfig
     quality: QualitySettings
-    debug?: dat.GUI
+    debug?: GUI
     scene!: THREE.Scene
     renderer!: THREE.WebGLRenderer
     camera!: Camera
@@ -110,6 +120,7 @@ export default class Application {
     loadingScreen: LoadingScreen
 
     constructor(options: ApplicationOptions) {
+        this.options = options
         this.canvas = options.canvas
 
         this.time = new Time()
@@ -172,7 +183,7 @@ export default class Application {
 
     private setDebug(): void {
         if (this.config.debug) {
-            this.debug = new dat.GUI({ width: 420 })
+            this.debug = this.options.debug
         }
     }
 

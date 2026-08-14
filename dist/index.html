@@ -29,13 +29,29 @@
          for visitors who are getting the 3D world. -->
     <script>document.documentElement.classList.add('has-js')</script>
 
-  <script type="module" crossorigin src="/assets/index-FRHkpwSd.js"></script>
+  <script type="module" crossorigin src="/assets/index-DXaY0MqE.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-CWW70mfx.css">
+    <link rel="modulepreload" href="/assets/three-DPAQIZy_.js">
+    <link rel="modulepreload" href="/assets/rapier-D3Mqfikn.js">
+    <link rel="modulepreload" href="/assets/Application-DkejN6d2.js">
 </head>
 <body>
     <!-- First in tab order, so assistive tech and keyboard users reach the
          readable version before anything else. Hidden until focused. -->
     <a class="skip-link" href="#fallback">Skip the 3D world &mdash; view the text version</a>
+
+    <!-- Filled in at build time from portfolio.ts. Static markup on purpose:
+         built in JS it could not appear until the application bundle had
+         downloaded, which is the wait it exists to cover. -->
+    
+    <div class="loading-screen" aria-hidden="true">
+        <h1 class="loading-title">ALEXANDER WANG</h1>
+        <p class="loading-subtitle">My World</p>
+        <div class="loading-progress">
+            <div class="loading-progress-fill"></div>
+        </div>
+        <p class="loading-prompt">Loading&hellip;</p>
+    </div>
 
     <!-- Nothing here is describable, so keep it out of the accessibility tree -->
     <canvas class="js-canvas" aria-hidden="true"></canvas>

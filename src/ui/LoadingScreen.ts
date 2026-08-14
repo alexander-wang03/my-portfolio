@@ -1,45 +1,45 @@
 import gsap from 'gsap'
 import EventEmitter from '../engine/Utils/EventEmitter'
-import { FULL_NAME, TAGLINE } from '../content/portfolio'
 
+/**
+ * Drives the loading screen that is already in the page.
+ *
+ * The markup is injected into index.html at build time (`content/loading.ts`)
+ * rather than built here. Built here it could not appear until this bundle had
+ * downloaded and parsed, which is precisely the wait it exists to cover — the
+ * visitor got a blank page for the whole download and the loading screen only
+ * afterwards, with nothing left to load.
+ */
 export default class LoadingScreen extends EventEmitter {
-    element: HTMLDivElement
-    private progressFill: HTMLDivElement
-    private progressBar: HTMLDivElement
-    private promptText: HTMLParagraphElement
+    element: HTMLElement
+    private progressFill: HTMLElement
+    private progressBar: HTMLElement
+    private promptText: HTMLElement
     private ready = false
 
     constructor() {
         super()
 
-        this.element = document.createElement('div')
-        this.element.className = 'loading-screen'
-        // Decorative chrome for the 3D world; the readable version is elsewhere
-        this.element.setAttribute('aria-hidden', 'true')
+        const element = document.querySelector<HTMLElement>('.loading-screen')
+        const progressBar = element?.querySelector<HTMLElement>('.loading-progress')
+        const progressFill = element?.querySelector<HTMLElement>('.loading-progress-fill')
+        const promptText = element?.querySelector<HTMLElement>('.loading-prompt')
 
-        const title = document.createElement('h1')
-        title.className = 'loading-title'
-        title.textContent = FULL_NAME
-        this.element.appendChild(title)
+        if (!element || !progressBar || !progressFill || !promptText) {
+            // Thrown rather than patched over: Application is constructed inside
+            // a try/catch that drops to the readable fallback, which is a better
+            // outcome than a world nobody can see past a broken overlay
+            throw new Error(
+                '[LoadingScreen] markup missing from the page. It is injected ' +
+                'into index.html by the portfolio-fallback-content plugin, ' +
+                'which replaces the <!--loading-screen--> comment.',
+            )
+        }
 
-        const subtitle = document.createElement('p')
-        subtitle.className = 'loading-subtitle'
-        subtitle.textContent = TAGLINE
-        this.element.appendChild(subtitle)
-
-        this.progressBar = document.createElement('div')
-        this.progressBar.className = 'loading-progress'
-        this.progressFill = document.createElement('div')
-        this.progressFill.className = 'loading-progress-fill'
-        this.progressBar.appendChild(this.progressFill)
-        this.element.appendChild(this.progressBar)
-
-        this.promptText = document.createElement('p')
-        this.promptText.className = 'loading-prompt'
-        this.promptText.textContent = 'Loading...'
-        this.element.appendChild(this.promptText)
-
-        document.body.appendChild(this.element)
+        this.element = element
+        this.progressBar = progressBar
+        this.progressFill = progressFill
+        this.promptText = promptText
 
         this.element.addEventListener('click', () => {
             if (!this.ready) return
