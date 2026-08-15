@@ -1,41 +1,32 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Dependencies
 /node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+package-lock.json.bak
 
-# testing
-/coverage
+# Build output
+#
+# Vite writes here on every build, with a content hash in each filename — so
+# tracking it means every build rewrites the same files under new names and
+# the diff fills with churn. Deploys build from source (Vercel, Netlify and
+# GitHub Actions all do); the only setup that would need this committed is
+# GitHub Pages serving a branch, which can only serve / or /docs anyway.
+/dist
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# Editor and OS
 .DS_Store
-*.pem
+.vscode/*
+!.vscode/extensions.json
+*.swp
 
-# debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Env files
+.env
+.env.*
+!.env.example
 
-# vercel
-.vercel
-
-# typescript
+# TypeScript
 *.tsbuildinfo
-next-env.d.ts
