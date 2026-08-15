@@ -7,6 +7,9 @@ import type { ImpactMaterial } from './Physics'
 /** Contacts resolve in clusters, so collapse them into one audible hit. */
 const MIN_IMPACT_INTERVAL = 0.06
 
+/** Milliseconds between horns. Holding the key repeats keydown, so it needs one. */
+const HORN_COOLDOWN = 350
+
 const lerp = (range: [number, number], t: number) => range[0] + (range[1] - range[0]) * t
 
 /**
@@ -25,7 +28,13 @@ interface ImpactSample {
     rate: [number, number]
 }
 
-const SAMPLES: Partial<Record<ImpactMaterial, ImpactSample>> = {
+/**
+ * Anything played from a set of takes at a strength, which is more than just
+ * collisions — a landing and a skid want the same treatment.
+ */
+type SampleName = ImpactMaterial | 'landing' | 'screech'
+
+const SAMPLES: Partial<Record<SampleName, ImpactSample>> = {
     // The rover was the last thing still synthesised, and the sampled engine
     // loop is far louder than the oscillator it replaced — a 60-96 Hz thump
     // simply disappeared underneath it. These sit well clear of the engine.
@@ -61,6 +70,52 @@ const SAMPLES: Partial<Record<ImpactMaterial, ImpactSample>> = {
         volume: [0.2, 0.85],
         rate: [0.85, 1.15],
     },
+    // The suspension taking a drop. Same takes as an impact but pitched right
+    // down, which turns the crack of a collision into the thump of a spring
+    // bottoming out — it should read as weight landing, not as damage.
+    landing: {
+        sources: [1, 3, 4, 5].map((n) => `/sounds/car-hits/car-hit-${n}.mp3`),
+        // Floors here are high because volume is squared and these two rarely
+        // reach full strength: a measured landing averages 0.3 and a measured
+        // slide 0.5, which off a 0.25 floor is a gain of 0.17 — inaudible
+        // under the engine. Set from the strengths that actually occur.
+        volume: [0.45, 0.9],
+        rate: [0.5, 0.65],
+    },
+    // folio's screech, normalised — it shipped peaking at -14 dBFS, which is
+    // well under the engine it has to cut through
+    screech: {
+        sources: ['/sounds/screeches/screech-1.mp3'],
+        volume: [0.5, 0.85],
+        rate: [0.9, 1.1],
+    },
+}
+
+/**
+ * When the tyres are judged to be sliding.
+ *
+ * Measured as a slip *angle* — sideways speed as a fraction of forward speed —
+ * rather than an absolute sideways speed. It is the ratio that makes a slide a
+ * slide: 3 units/s sideways is a lurid drift at walking pace and barely a
+ * twitch at full speed, so any fixed figure is wrong at one end or the other.
+ */
+const SCREECH = {
+    /** Below this there is no grip worth losing. */
+    minSpeed: 6,
+    /**
+     * tan of the slip angle. These are measured, not guessed: `frictionSlip`
+     * is 10, which is a lot of grip, and a full-lock corner at speed tops out
+     * around 0.17 — under 10 degrees. An earlier 0.25 was simply unreachable,
+     * so the screech never once played.
+     *
+     * 0.15 covers the hardest third of a full-lock corner and nothing gentler.
+     * Dropping to 0.10 would catch 97% of all cornering, which is a rover that
+     * screeches its way around every bend.
+     */
+    minSlip: 0.15,
+    fullSlip: 0.17,
+    /** The sample is only 0.32s, so this paces a long slide into repeats. */
+    cooldown: 800,
 }
 
 /**
@@ -86,10 +141,11 @@ const ENGINE = {
     volume: [0.25, 0.9] as [number, number],
 }
 
-/** One-shot cues, keyed by name. */
+/** One-shot cues, keyed by name. Fixed level, one take, no strength. */
 const CUES = {
     reveal: '/sounds/reveal/reveal-1.mp3',
     ui: '/sounds/ui/area-1.mp3',
+    horn: '/sounds/car-horns/car-horn-1.mp3',
 }
 
 /**
@@ -135,8 +191,10 @@ export default class Sounds {
     muted = false
     private started = false
     private lastImpactAt = 0
+    private lastScreechAt = 0
+    private lastHornAt = 0
     /** Loaded sample players, keyed by material. */
-    private howls = new Map<ImpactMaterial, Howl[]>()
+    private howls = new Map<SampleName, Howl[]>()
     private cues = new Map<keyof typeof CUES, Howl>()
 
     constructor(options: SoundsOptions) {
@@ -163,6 +221,10 @@ export default class Sounds {
 
         this.physics.on('impact', (...args: unknown[]) => {
             this.playImpact(args[0] as number, args[1] as ImpactMaterial)
+        })
+
+        this.physics.on('land', (...args: unknown[]) => {
+            this.playLanding(args[0] as number)
         })
 
         this.time.on('tick', () => this.update())
@@ -207,9 +269,9 @@ export default class Sounds {
     }
 
     private loadSamples(): void {
-        for (const [material, sample] of Object.entries(SAMPLES)) {
+        for (const [name, sample] of Object.entries(SAMPLES)) {
             this.howls.set(
-                material as ImpactMaterial,
+                name as SampleName,
                 sample.sources.map((src) => loadHowl(src)),
             )
         }
@@ -226,12 +288,12 @@ export default class Sounds {
      * one is added to `Physics` without a matching entry in `SAMPLES` — in
      * which case that material is silent, which is the point of the warning.
      */
-    private playSample(strength: number, material: ImpactMaterial): void {
-        const sample = SAMPLES[material]
-        const players = this.howls.get(material)
+    private playSample(strength: number, name: SampleName): void {
+        const sample = SAMPLES[name]
+        const players = this.howls.get(name)
 
         if (!sample || !players?.length) {
-            console.warn(`[Sounds] no samples for impact material "${material}"`)
+            console.warn(`[Sounds] no samples named "${name}"`)
             return
         }
 
@@ -246,17 +308,81 @@ export default class Sounds {
 
     /** A hit, played from that material's recorded samples. */
     playImpact(strength: number, material: ImpactMaterial = 'default'): void {
+        if (!this.claimImpactSlot()) return
+        this.playSample(strength, material)
+    }
+
+    /**
+     * The suspension taking a landing.
+     *
+     * Kept out of the shared impact slot on purpose. Landing hard often
+     * registers a chassis contact in the same frame, and sharing meant the
+     * contact claimed the slot first and the landing was dropped — the
+     * suspension going quiet exactly when it was working hardest. Physics
+     * already rate-limits these, so nothing here needs to.
+     */
+    playLanding(strength: number): void {
         if (this.muted) return
+        this.playSample(strength, 'landing')
+    }
+
+    /**
+     * One knock's worth of the shared impact budget.
+     *
+     * Contacts resolve in clusters — several in the same frame, from the same
+     * event — and playing them all turns one collision into a rattle.
+     */
+    private claimImpactSlot(): boolean {
+        if (this.muted) return false
 
         // Howler runs its own context, so this has to work before the wind's
         // has been created
         const now = this.ctx ? this.ctx.currentTime : performance.now() / 1000
 
-        // Too many contacts resolve on the same frame to play them all
-        if (now - this.lastImpactAt < MIN_IMPACT_INTERVAL) return
+        if (now - this.lastImpactAt < MIN_IMPACT_INTERVAL) return false
         this.lastImpactAt = now
 
-        this.playSample(strength, material)
+        return true
+    }
+
+    /**
+     * Tyres letting go, judged from the slip angle each frame.
+     *
+     * Driven from here rather than from an event because a slide is a state,
+     * not a moment — there is nothing for physics to fire. The cooldown is
+     * what turns that continuous state back into discrete chirps.
+     */
+    private updateScreech(): void {
+        if (this.muted) return
+        if (!this.physics.wheelGrounded.some(Boolean)) return
+
+        const forward = Math.abs(this.physics.forwardSpeed)
+        if (forward < SCREECH.minSpeed) return
+
+        const slip = Math.abs(this.physics.lateralSpeed) / forward
+        if (slip < SCREECH.minSlip) return
+
+        if (this.time.elapsed - this.lastScreechAt < SCREECH.cooldown) return
+        this.lastScreechAt = this.time.elapsed
+
+        const strength = Math.min(
+            (slip - SCREECH.minSlip) / (SCREECH.fullSlip - SCREECH.minSlip),
+            1,
+        )
+        this.playSample(strength, 'screech')
+    }
+
+    /**
+     * The horn.
+     *
+     * Rate-limited here as well as at the key, since the key is not the only
+     * way in — touch controls could reach it too.
+     */
+    playHorn(): void {
+        if (this.time.elapsed - this.lastHornAt < HORN_COOLDOWN) return
+        this.lastHornAt = this.time.elapsed
+
+        this.play('horn')
     }
 
     /**
@@ -283,6 +409,8 @@ export default class Sounds {
     }
 
     private update(): void {
+        this.updateScreech()
+
         if (!this.engine) return
 
         const speedRatio = Math.min(

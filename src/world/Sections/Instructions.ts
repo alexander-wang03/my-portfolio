@@ -99,14 +99,18 @@ function drawKeyboardLegend(ctx: CanvasRenderingContext2D): void {
     const rows = [
         { key: 'SHIFT', label: 'BOOST' },
         { key: 'SPACE', label: 'BRAKE' },
+        { key: 'H', label: 'HORN' },
         { key: 'R', label: 'RESET ROVER' },
         { key: 'M', label: 'MUTE SOUND' },
     ]
 
+    // Sized so the column clears the title at y=48 and the footer at y=480.
+    // At the old 62/22 a fifth row ran to y=516, off a 512px canvas.
     const colX = 520
     const keyW = 156
-    const keyH = 62
-    let y = 118
+    const keyH = 56
+    const gap = 14
+    let y = 100
 
     for (const row of rows) {
         drawKeycap(ctx, colX, y, keyW, keyH, row.key, row.key.length > 1 ? 28 : 34)
@@ -117,7 +121,7 @@ function drawKeyboardLegend(ctx: CanvasRenderingContext2D): void {
         ctx.textBaseline = 'middle'
         ctx.fillText(row.label, colX + keyW + 26, y + keyH / 2 + 1)
 
-        y += keyH + 22
+        y += keyH + gap
     }
 
     drawFooter(ctx, 'drive into a sign to open it')

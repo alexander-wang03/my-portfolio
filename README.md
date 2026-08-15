@@ -21,6 +21,7 @@ npm run preview  # serve the production build
 | `W` `A` `S` `D` / arrows | drive |
 | `Shift` | boost |
 | `Space` / `Ctrl` | brake |
+| `H` | horn |
 | `R` | reset to spawn |
 | `M` | mute |
 | scroll / pinch | zoom |

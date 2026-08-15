@@ -481,5 +481,9 @@ export default class World {
         })
 
         this.areas.on('interact', () => this.sounds.play('ui'))
+
+        this.controls.on('action', (...args: unknown[]) => {
+            if (args[0] === 'horn') this.sounds.playHorn()
+        })
     }
 }

@@ -29,6 +29,28 @@ export const DROP_IN_HEIGHT = 3
 const FALL_FLOOR = -12
 
 /**
+ * Downward speed below which a touchdown is not worth hearing, in units/s.
+ *
+ * Roughly the speed reached falling 0.25 units, about one suspension travel.
+ */
+const MIN_LANDING_SPEED = 2.5
+
+/** Fall speed treated as the hardest landing. Reached dropping ~7 units. */
+const LANDING_REFERENCE_SPEED = 13
+
+/** Milliseconds between landings, so four wheels arriving is one thud. */
+const LANDING_COOLDOWN = 250
+
+/**
+ * How fast the tracked descent speed decays, per tick.
+ *
+ * Read at the instant a wheel reports contact, the chassis has already had
+ * some of its fall taken out by the suspension, which understates every
+ * landing. Holding a decaying peak reads the approach instead.
+ */
+const FALL_SPEED_DECAY = 0.8
+
+/**
  * How far inside the boundary a spot has to be to be worth returning to.
  *
  * Putting the rover back exactly where it went over sends it straight off
@@ -117,6 +139,11 @@ export default class Physics extends EventEmitter {
     /** Eased 0–1 brake strength, so the brake comes on over a few frames. */
     private brakeRamp = 0
     forwardSpeed = 0
+    /**
+     * Speed sideways through the chassis, signed. Compared against
+     * `forwardSpeed` it gives the slip angle, which is what a skid actually is.
+     */
+    lateralSpeed = 0
     chassisPosition = new THREE.Vector3()
     chassisQuaternion = new THREE.Quaternion()
 
@@ -187,6 +214,11 @@ export default class Physics extends EventEmitter {
 
     /** Last place the rover was on the ground and well inside the map. */
     private lastSafePosition = { x: 0, z: 0 }
+
+    // Landing detection
+    private prevWheelGrounded = [false, false, false, false]
+    private recentFallSpeed = 0
+    private lastLandingAt = 0
 
     constructor(options: PhysicsOptions) {
         super()
@@ -457,6 +489,9 @@ export default class Physics extends EventEmitter {
             const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.chassisQuaternion)
             this.forwardSpeed = currentVel.dot(forward)
 
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.chassisQuaternion)
+            this.lateralSpeed = currentVel.dot(right)
+
             if (dt > 0) {
                 this.acceleration.copy(currentVel).sub(this.prevVelocity).divideScalar(dt)
             }
@@ -508,8 +543,9 @@ export default class Physics extends EventEmitter {
                 this.wheelSpinAngles[i] = this.vehicleController.wheelRotation(i) ?? 0
             }
 
-            // Needs the wheel contact flags above, so it trails the loop
+            // Both need the wheel contact flags above, so they trail the loop
             this.updateSafePosition()
+            this.checkLanding()
 
             // --- Update debug visuals ---
             if (this.chassisMesh) {
@@ -567,6 +603,43 @@ export default class Physics extends EventEmitter {
                 this.upsideDownTimeout = null
             }
         }
+    }
+
+    /**
+     * Report the suspension taking a landing.
+     *
+     * Nothing else can. The wheels are raycasts, not colliders, so touching
+     * down produces no contact at all — land squarely on all four and the
+     * simulation is silent unless the chassis itself bottoms out.
+     *
+     * Watched per wheel rather than per vehicle. Requiring all four to be
+     * airborne first sounds like the right definition of a landing and is
+     * useless in practice: driving flat out across this terrain for 20
+     * seconds produced two such transitions, because a single wheel almost
+     * always keeps contact over a crest. Fourteen individual wheels touched
+     * down hard over the same run, and those are the hits you feel.
+     */
+    private checkLanding(): void {
+        this.recentFallSpeed = Math.max(
+            -this.chassisBody.linvel().y,
+            this.recentFallSpeed * FALL_SPEED_DECAY,
+        )
+
+        let touchedDown = false
+        for (let i = 0; i < 4; i++) {
+            if (this.wheelGrounded[i] && !this.prevWheelGrounded[i]) touchedDown = true
+            this.prevWheelGrounded[i] = this.wheelGrounded[i]
+        }
+
+        if (!touchedDown) return
+
+        // Cresting a bump drops a wheel a few centimetres. Without a floor
+        // every ripple in the terrain would land.
+        if (this.recentFallSpeed < MIN_LANDING_SPEED) return
+        if (this.time.elapsed - this.lastLandingAt < LANDING_COOLDOWN) return
+
+        this.lastLandingAt = this.time.elapsed
+        this.trigger('land', [Math.min(this.recentFallSpeed / LANDING_REFERENCE_SPEED, 1)])
     }
 
     /**

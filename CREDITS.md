@@ -34,6 +34,12 @@ MIT licensed.
 - `static/models/matcaps/*.png` — all 14 matcaps
 - `static/sounds/bricks/`, `static/sounds/bowling/`, `static/sounds/car-hits/`
   — impact samples
+- `static/sounds/screeches/`, `static/sounds/car-horns/`, `static/sounds/reveal/`,
+  `static/sounds/ui/` — tyre screech, horn, intro cue and UI blip
+
+Changes made: several were re-encoded at a higher level. They shipped peaking
+between -19 and -11 dBFS, which put them under the engine loop they have to be
+heard over.
 
 ```
 MIT License

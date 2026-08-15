@@ -83,6 +83,12 @@ export default class Controls extends EventEmitter {
                 case 'ShiftRight':
                     this.actions.boost = true
                     break
+                case 'KeyH':
+                    // On the press, unlike reset — a horn that waits for the
+                    // key to come back up does not feel like a button at all.
+                    // Held keys repeat, so the repeats have to be dropped.
+                    if (!event.repeat) this.trigger('action', ['horn'])
+                    break
             }
         }
 
