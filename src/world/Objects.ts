@@ -1,4 +1,4 @@
-import RAPIER from '@dimforge/rapier3d-compat'
+import RAPIER from '../engine/rapier'
 import * as THREE from 'three'
 import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'

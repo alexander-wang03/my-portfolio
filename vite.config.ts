@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
 import glsl from 'vite-plugin-glsl'
+import wasm from 'vite-plugin-wasm'
 import path from 'path'
 import { renderFallbackHtml } from './src/content/fallback'
 import { renderLoadingHtml } from './src/content/loading'
@@ -41,14 +42,31 @@ function preloadChunks(): Plugin {
       handler(html, ctx) {
         if (!ctx.bundle) return html // dev server serves modules directly
 
-        const preloaded = Object.values(ctx.bundle)
+        const outputs = Object.values(ctx.bundle)
+          // Only what every visitor needs — dat.gui is for #debug alone
+          .filter((output) => !output.fileName.includes('dat.gui'))
+
+        const chunks = outputs
           .filter((output): output is typeof output & { type: 'chunk' } =>
             output.type === 'chunk' && !output.isEntry,
           )
-          // Only what every visitor needs — dat.gui is for #debug alone
-          .filter((chunk) => !chunk.fileName.includes('dat.gui'))
           .map((chunk) => `<link rel="modulepreload" href="/${chunk.fileName}">`)
-          .join('\n    ')
+
+        // Rapier's wasm is the single largest thing the page needs and the
+        // last thing discovered: nothing requests it until the chunk that
+        // imports it has downloaded, parsed and run. `as="fetch"` with
+        // `crossorigin` matches how the glue asks for it, so the preload is
+        // reused rather than fetched a second time.
+        const wasmAssets = outputs
+          .filter((output) => output.fileName.endsWith('.wasm'))
+          .map((asset) =>
+            `<link rel="preload" href="/${asset.fileName}" as="fetch" ` +
+            `type="application/wasm" crossorigin>`,
+          )
+
+        // Joined with a template literal so the newline needs no escaping
+        const preloaded = [...wasmAssets, ...chunks].join(`
+    `)
 
         return html.replace('</head>', `    ${preloaded}\n</head>`)
       },
@@ -62,6 +80,17 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
+    /**
+     * Rapier's wasm glue is a top-level await, which Vite's default target
+     * ('modules', ~2020 browsers) will not emit. Raising the floor to browsers
+     * that support it natively costs Chrome 89, Safari 15 and Firefox 89 —
+     * all from 2021, and all older than the versions already required
+     * elsewhere on this site.
+     *
+     * The alternative, vite-plugin-top-level-await, fails to parse this
+     * bundle: its bundled swc throws "missing field `type`" at generate time.
+     */
+    target: 'esnext',
     rollupOptions: {
       output: {
         /**
@@ -72,13 +101,17 @@ export default defineConfig({
          * editing the site does not re-download the engines behind it.
          */
         manualChunks(id) {
-          if (id.includes('@dimforge/rapier3d-compat')) return 'rapier'
+          if (id.includes('@dimforge/rapier3d')) return 'rapier'
           if (id.includes('node_modules/three')) return 'three'
         },
       },
     },
   },
   plugins: [
+    // Rapier is imported from `@dimforge/rapier3d`, whose glue does
+    // `import * as wasm from './rapier_wasm3d_bg.wasm'`. This turns that into
+    // a real emitted .wasm asset, and must run before the app is transformed.
+    wasm(),
     glsl(),
     fallbackContent(),
     preloadChunks(),

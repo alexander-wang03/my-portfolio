@@ -1,6 +1,5 @@
 import * as THREE from 'three'
 import type { GUI } from 'dat.gui'
-import RAPIER from '@dimforge/rapier3d-compat'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
@@ -141,8 +140,10 @@ export default class Application {
     }
 
     private async initPhysicsAndWorld(): Promise<void> {
-        this.loadingScreen.setProgress(0.1)
-        await RAPIER.init()
+        // No `RAPIER.init()`. The compat build shipped its wasm inlined as
+        // base64 and had to decode it on demand, which is what that call did.
+        // This build imports a real .wasm module, so it is ready by the time
+        // anything here can run — the await moved into module loading.
         this.loadingScreen.setProgress(0.3)
         await this.setWorld()
         this.loadingScreen.setReady()

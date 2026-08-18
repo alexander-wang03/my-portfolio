@@ -68,6 +68,10 @@ A few things that are less obvious than they look:
   without WebGL get the readable version; a skip link reaches it deliberately.
 - **The loading screen is static markup**, injected at build time. Built in JS
   it could not appear until the bundle it exists to cover had downloaded.
+- **Rapier is imported through `src/engine/rapier.ts`, not directly.** Its wasm
+  hookup module is side-effect-only and gets tree-shaken out of a production
+  build, leaving an unassigned `let wasm;` and a runtime failure. That file
+  holds it in place — see the comment there before changing any import.
 - `prefers-reduced-motion` is honoured throughout, and quality scales down on
   low-power devices.
 
