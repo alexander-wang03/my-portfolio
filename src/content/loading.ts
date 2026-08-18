@@ -19,7 +19,7 @@ export function renderLoadingHtml(): string {
     <div class="loading-screen" aria-hidden="true">
         <h1 class="loading-title">${escapeHtml(FULL_NAME)}</h1>
         <p class="loading-subtitle">${escapeHtml(TAGLINE)}</p>
-        <div class="loading-progress">
+        <div class="loading-progress loading-progress--indeterminate">
             <div class="loading-progress-fill"></div>
         </div>
         <p class="loading-prompt">Loading&hellip;</p>

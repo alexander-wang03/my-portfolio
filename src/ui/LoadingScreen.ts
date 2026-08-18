@@ -48,6 +48,9 @@ export default class LoadingScreen extends EventEmitter {
     }
 
     setProgress(value: number): void {
+        // Also covers the case where the download was never measurable — in
+        // dev, or without PerformanceObserver — and the bar is still sweeping
+        this.progressBar.classList.remove('loading-progress--indeterminate')
         this.progressFill.style.width = `${Math.min(value * 100, 100)}%`
     }
 

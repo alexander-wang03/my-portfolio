@@ -335,6 +335,23 @@ html:not(.has-js) .skip-link {
     transition: width 0.3s ease;
 }
 
+/* Shown until the first real measurement arrives.
+ *
+ * The download cannot always be measured — no PerformanceObserver, or the dev
+ * server, where there is no build manifest to measure against. A bar sitting
+ * at 0% claims "no progress", which is a worse lie than admitting the length
+ * is unknown, so it sweeps instead. */
+.loading-progress--indeterminate .loading-progress-fill {
+    width: 35%;
+    transition: none;
+    animation: loading-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes loading-sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(285%); }
+}
+
 .loading-prompt {
     font-size: 0.8rem;
     letter-spacing: 0.2em;
@@ -615,6 +632,14 @@ html:not(.has-js) .skip-link {
 
     .loading-prompt-ready {
         animation: none;
+    }
+
+    /* A bar sweeping back and forth forever is exactly the kind of motion
+       this setting asks to be spared. A static partial fill still reads as
+       "in progress, length unknown". */
+    .loading-progress--indeterminate .loading-progress-fill {
+        animation: none;
+        transform: translateX(32%);
     }
 
     .touch-btn,

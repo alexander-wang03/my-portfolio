@@ -144,7 +144,8 @@ export default class Application {
         // base64 and had to decode it on demand, which is what that call did.
         // This build imports a real .wasm module, so it is ready by the time
         // anything here can run — the await moved into module loading.
-        this.loadingScreen.setProgress(0.3)
+        // The first 60% belongs to downloading, driven from index.html
+        this.loadingScreen.setProgress(0.6)
         await this.setWorld()
         this.loadingScreen.setReady()
     }
@@ -279,7 +280,7 @@ export default class Application {
         })
         this.scene.add(this.world.container)
         await this.world.init((progress) => {
-            this.loadingScreen.setProgress(0.3 + progress * 0.7)
+            this.loadingScreen.setProgress(0.6 + progress * 0.4)
         })
     }
 

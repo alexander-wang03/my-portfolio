@@ -74,6 +74,71 @@ function preloadChunks(): Plugin {
   }
 }
 
+/**
+ * Injects a small script that reports real download progress.
+ *
+ * The loading screen is static markup now, so it paints immediately — but its
+ * bar could not move until the application bundle had arrived and constructed,
+ * which is the entire wait it exists to describe. It sat at 0% for ~800 kB and
+ * then jumped, which reads as 'stuck', not 'loading'.
+ *
+ * Sizes come from the finished bundle, and progress from the Resource Timing
+ * API, so nothing is downloaded twice to measure it. `decodedBodySize` is the
+ * uncompressed size, which is what these figures are, so the maths holds
+ * whether or not the server serves them gzipped.
+ *
+ * Resource Timing only reports a file once it has finished, so this advances
+ * in a handful of steps rather than smoothly. That is still the truth, which a
+ * flat 0% was not.
+ */
+function downloadProgress(): Plugin {
+  /** Share of the bar given to downloading; the rest is building the world. */
+  const DOWNLOAD_SHARE = 60
+
+  return {
+    name: 'portfolio-download-progress',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle) return html // dev server: the bar stays indeterminate
+
+        const sizes: Record<string, number> = {}
+        for (const output of Object.values(ctx.bundle)) {
+          if (output.fileName.includes('dat.gui')) continue // #debug only
+          const body = output.type === 'chunk' ? output.code : output.source
+          sizes['/' + output.fileName] =
+            typeof body === 'string' ? Buffer.byteLength(body) : body.byteLength
+        }
+
+        const total = Object.values(sizes).reduce((sum, n) => sum + n, 0)
+
+        const script =
+          '<script>(function(){' +
+          'var sizes=' + JSON.stringify(sizes) + ',total=' + total + ',loaded=0,seen={};' +
+          "var bar=document.querySelector('.loading-progress');" +
+          "var fill=document.querySelector('.loading-progress-fill');" +
+          'if(!bar||!fill||!window.PerformanceObserver)return;' +
+          'function count(entry){' +
+          'var path=new URL(entry.name,location.href).pathname;' +
+          'if(!(path in sizes)||seen[path])return;seen[path]=1;' +
+          // A cached response can report 0, so fall back to the known size
+          'loaded+=entry.decodedBodySize||sizes[path];' +
+          "bar.classList.remove('loading-progress--indeterminate');" +
+          'var pct=Math.min(loaded/total*' + DOWNLOAD_SHARE + ',' + DOWNLOAD_SHARE + ');' +
+          // Never move backwards: the app drives the bar past this point, and a
+          // late-finishing file would otherwise yank it back
+          "if(!fill.style.width||pct>parseFloat(fill.style.width))fill.style.width=pct+'%';" +
+          '}' +
+          'new PerformanceObserver(function(list){list.getEntries().forEach(count)})' +
+          ".observe({type:'resource',buffered:true});" +
+          '})()</' + 'script>'
+
+        return html.replace('</body>', `    ${script}
+</body>`)
+      },
+    },
+  }
+}
 export default defineConfig({
   root: 'src',
   publicDir: '../static',
@@ -115,6 +180,7 @@ export default defineConfig({
     glsl(),
     fallbackContent(),
     preloadChunks(),
+    downloadProgress(),
   ],
   resolve: {
     alias: {
