@@ -132,7 +132,8 @@ function drawTouchLegend(ctx: CanvasRenderingContext2D): void {
 
     const lines = [
         'JOYSTICK  —  drive & steer',
-        'BOOST / BRAKE  —  bottom right',
+        'BOOST / BRAKE / HORN  —  bottom right',
+        'RESET  —  top left',
     ]
 
     ctx.textAlign = 'center'

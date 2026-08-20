@@ -161,6 +161,26 @@ export default class Controls extends EventEmitter {
         boostBtn.textContent = 'BOOST'
         container.appendChild(boostBtn)
 
+        const hornBtn = document.createElement('button')
+        hornBtn.className = 'touch-btn touch-horn'
+        hornBtn.textContent = 'HORN'
+        container.appendChild(hornBtn)
+
+        // Parked away from the driving cluster: it teleports the rover, so it
+        // is the one control that must not be caught by a stray thumb
+        const resetBtn = document.createElement('button')
+        resetBtn.className = 'touch-btn touch-reset'
+        resetBtn.textContent = 'RESET'
+        container.appendChild(resetBtn)
+
+        // The container is aria-hidden — it describes touch gestures, which are
+        // not something assistive tech can carry out — so its buttons must not
+        // be in the tab order, or focus lands on a control nothing can announce.
+        // These also exist on any touch-capable laptop, where that tab order is
+        // real. `inert` would be the usual fix but would block the very touches
+        // they exist for; keyboard users have the actual keys.
+        for (const btn of [brakeBtn, boostBtn, hornBtn, resetBtn]) btn.tabIndex = -1
+
         document.body.appendChild(container)
 
         // --- Joystick touch handling ---
@@ -240,8 +260,31 @@ export default class Controls extends EventEmitter {
             btn.addEventListener('touchcancel', release)
         }
 
+        /**
+         * Buttons that fire once rather than being held.
+         *
+         * Horn and reset are events, not states — there is no `actions` flag
+         * to set and clear, so they cannot go through `bindButton`, and the
+         * lit state has to be driven from here for the same reason: nothing in
+         * the tick loop knows they happened.
+         */
+        const bindTrigger = (btn: HTMLElement, action: string) => {
+            btn.addEventListener('touchstart', (e) => {
+                if (!this.enabled) return
+                e.preventDefault()
+                e.stopPropagation()
+
+                this.trigger('action', [action])
+
+                btn.classList.add('active')
+                window.setTimeout(() => btn.classList.remove('active'), 150)
+            }, { passive: false })
+        }
+
         bindButton(brakeBtn, 'brake')
         bindButton(boostBtn, 'boost')
+        bindTrigger(hornBtn, 'horn')
+        bindTrigger(resetBtn, 'reset')
 
         // Light the buttons from the action state rather than from the touch
         // handlers, so the keyboard (Shift / Space) lights them up too — these

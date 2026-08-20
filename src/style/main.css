@@ -568,6 +568,34 @@ html:not(.has-js) .skip-link {
     right: 40px;
 }
 
+/* Beside the brake rather than stacked above the boost: a third button in that
+   column puts it where the thumb rests between inputs. */
+.touch-horn {
+    bottom: 40px;
+    right: 120px;
+}
+
+/* Top left, deliberately far from every driving control and from the section
+   panel that slides in on the right. It teleports the rover, so a stray thumb
+   reaching it costs the visitor their place. */
+.touch-reset {
+    top: 24px;
+    left: 24px;
+    width: 52px;
+    height: 52px;
+    opacity: 0.55;
+}
+
+.touch-horn.active {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.touch-reset.active {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.3);
+}
+
 /* ── Responsive: smaller controls on small screens ─────────────────── */
 
 @media (max-height: 500px) {
@@ -593,6 +621,16 @@ html:not(.has-js) .skip-link {
     .touch-boost {
         bottom: 88px;
         right: 20px;
+    }
+    .touch-horn {
+        bottom: 20px;
+        right: 88px;
+    }
+    .touch-reset {
+        top: 16px;
+        left: 16px;
+        width: 44px;
+        height: 44px;
     }
     .loading-title {
         font-size: 2rem;
