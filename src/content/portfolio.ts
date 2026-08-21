@@ -6,6 +6,16 @@
  * a copy edit is a single edit.
  */
 
+/**
+ * Where the site lives, with no trailing slash.
+ *
+ * Single-sourced because four different things have to agree on it: the
+ * canonical link, the Open Graph and Twitter tags, sitemap.xml and the
+ * Sitemap line in robots.txt. They are generated from here at build time —
+ * a stale URL in any one of them is the kind of thing nobody notices.
+ */
+export const SITE_URL = 'https://alexanderwang.io'
+
 export const FULL_NAME = 'ALEXANDER WANG'
 /** Short form, built as physical block letters at spawn. */
 export const BLOCK_LETTERS_NAME = 'ALEX WANG'

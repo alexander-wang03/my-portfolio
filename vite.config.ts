@@ -1,9 +1,11 @@
 import { defineConfig, type Plugin } from 'vite'
 import glsl from 'vite-plugin-glsl'
 import wasm from 'vite-plugin-wasm'
+import fs from 'fs'
 import path from 'path'
 import { renderFallbackHtml } from './src/content/fallback'
 import { renderLoadingHtml } from './src/content/loading'
+import { SITE_URL } from './src/content/portfolio'
 
 /**
  * Writes the portfolio content into index.html as real markup.
@@ -139,6 +141,100 @@ function downloadProgress(): Plugin {
     },
   }
 }
+/**
+ * Emits robots.txt and sitemap.xml, and fills in the absolute URLs in <head>.
+ *
+ * All of it derives from SITE_URL so the four places that must agree cannot
+ * drift apart.
+ *
+ * The sitemap lists two URLs and no more. The sections are addressable as
+ * fragments (#projects and friends), but a fragment is not a separate URL —
+ * crawlers strip it and see one page — so listing them would claim five pages
+ * that resolve to the same document. The résumé is genuinely its own URL, and
+ * PDFs are indexed.
+ *
+ * `lastmod` comes from the mtime of the file that actually holds the content,
+ * not from the build clock, so rebuilding without editing anything does not
+ * keep telling crawlers the page changed.
+ */
+function seoFiles(): Plugin {
+  const CONTENT_SOURCE = 'src/content/portfolio.ts'
+  const RESUME_FILE = 'static/CV.pdf'
+
+  const lastModified = (file: string): string => {
+    try {
+      return fs.statSync(path.resolve(__dirname, file)).mtime.toISOString().slice(0, 10)
+    } catch {
+      return new Date().toISOString().slice(0, 10)
+    }
+  }
+
+  return {
+    name: 'portfolio-seo-files',
+    apply: 'build',
+
+    transformIndexHtml(html) {
+      return html.replace('<!--absolute-urls-->', [
+        `<link rel="canonical" href="${SITE_URL}/">`,
+        `<meta property="og:url" content="${SITE_URL}/">`,
+        `<meta property="og:image" content="${SITE_URL}/og-image.png">`,
+        `<meta name="twitter:image" content="${SITE_URL}/og-image.png">`,
+      ].join(`
+    `))
+    },
+
+    generateBundle() {
+      const pages = [
+        { loc: '/', lastmod: lastModified(CONTENT_SOURCE), changefreq: 'monthly', priority: '1.0' },
+        { loc: '/CV.pdf', lastmod: lastModified(RESUME_FILE), changefreq: 'yearly', priority: '0.5' },
+      ]
+
+      const urls = pages.map((page) => [
+        '  <url>',
+        `    <loc>${SITE_URL}${page.loc}</loc>`,
+        `    <lastmod>${page.lastmod}</lastmod>`,
+        `    <changefreq>${page.changefreq}</changefreq>`,
+        `    <priority>${page.priority}</priority>`,
+        '  </url>',
+      ].join(`
+`)).join(`
+`)
+
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sitemap.xml',
+        source: [
+          '<?xml version="1.0" encoding="UTF-8"?>',
+          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+          urls,
+          '</urlset>',
+          '',
+        ].join(`
+`),
+      })
+
+      this.emitFile({
+        type: 'asset',
+        fileName: 'robots.txt',
+        source: [
+          'User-agent: *',
+          'Allow: /',
+          '',
+          '# The bundles and models are not content, and crawling them wastes',
+          '# crawl budget on a site whose text is all in the HTML already.',
+          'Disallow: /assets/',
+          'Disallow: /models/',
+          'Disallow: /sounds/',
+          '',
+          `Sitemap: ${SITE_URL}/sitemap.xml`,
+          '',
+        ].join(`
+`),
+      })
+    },
+  }
+}
+
 export default defineConfig({
   root: 'src',
   publicDir: '../static',
@@ -181,6 +277,7 @@ export default defineConfig({
     fallbackContent(),
     preloadChunks(),
     downloadProgress(),
+    seoFiles(),
   ],
   resolve: {
     alias: {
