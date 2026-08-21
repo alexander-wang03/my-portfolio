@@ -26,6 +26,20 @@ export default class Controls extends EventEmitter {
     /** True when the on-screen joystick and buttons were created. */
     hasTouchControls = false
 
+    /**
+     * Where the joystick is pointing, as a world-space bearing in radians, or
+     * null when it is not held.
+     *
+     * Screen-relative rather than vehicle-relative on purpose: pushing the
+     * stick towards a corner of the screen should send the rover to that
+     * corner, without the player having to work out which way the rover is
+     * currently facing and translate. Physics turns this into a steering angle.
+     */
+    desiredHeading: number | null = null
+
+    /** 0-1 stick deflection, so a small push is a gentle throttle. */
+    stickThrottle = 0
+
     constructor(options: ControlsOptions) {
         super()
 
@@ -220,11 +234,33 @@ export default class Controls extends EventEmitter {
 
                 const nx = dx / maxRadius
                 const ny = dy / maxRadius
+                const deflection = Math.min(Math.sqrt(nx * nx + ny * ny), 1)
 
-                this.actions.left = nx < -deadzone
-                this.actions.right = nx > deadzone
-                this.actions.up = ny < -deadzone
-                this.actions.down = ny > deadzone
+                if (deflection < deadzone) {
+                    this.desiredHeading = null
+                    this.stickThrottle = 0
+                    this.actions.up = false
+                    continue
+                }
+
+                // The camera sits at `angle.value` looking back at its target,
+                // so the direction it faces, flattened, is that offset negated.
+                // Screen-right is that forward crossed with world up, which for
+                // a y-up right-handed frame is (-fz, 0, fx).
+                const offset = this.camera.angle.value
+                const flat = Math.hypot(offset.x, offset.z) || 1
+                const fx = -offset.x / flat
+                const fz = -offset.z / flat
+                const rx = -fz
+                const rz = fx
+
+                // Screen y grows downward, so pushing up is -ny
+                const worldX = rx * nx + fx * -ny
+                const worldZ = rz * nx + fz * -ny
+
+                this.desiredHeading = Math.atan2(worldX, worldZ)
+                this.stickThrottle = deflection
+                this.actions.up = true
             }
         }
 
@@ -233,6 +269,8 @@ export default class Controls extends EventEmitter {
                 if (e.changedTouches[i].identifier !== joystickTouchId) continue
                 joystickTouchId = null
                 knob.style.transform = 'translate(-50%, -50%)'
+                this.desiredHeading = null
+                this.stickThrottle = 0
                 this.actions.left = false
                 this.actions.right = false
                 this.actions.up = false
@@ -304,6 +342,8 @@ export default class Controls extends EventEmitter {
             this.actions.left = false
             this.actions.brake = false
             this.actions.boost = false
+            this.desiredHeading = null
+            this.stickThrottle = 0
         })
     }
 }

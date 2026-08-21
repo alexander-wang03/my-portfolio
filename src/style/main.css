@@ -295,17 +295,42 @@ html:not(.has-js) .skip-link {
     background: radial-gradient(ellipse at center, #1a0e08 0%, #0a0504 70%, #000000 100%);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #fff;
+    padding: 0 16px;
+    overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
 }
 
 .loading-title {
-    font-size: 3rem;
+    /* Fluid, because the width of this is the whole problem on a phone. At a
+       fixed 3rem with 0.5em tracking, "ALEXANDER WANG" measures ~750px — twice
+       a 375px portrait screen. It only ever looked right in landscape because
+       the one rule that shrank it lived in a max-height query.
+       The trailing letter-space is padded back on the left to keep it optically
+       centred, so the two values have to stay equal. */
+    font-size: clamp(1.6rem, 7.5vw, 3rem);
     font-weight: 200;
     letter-spacing: 0.5em;
     padding-left: 0.5em;
     margin-bottom: 0.25em;
+    max-width: 100%;
+    text-align: center;
     color: #d4a574;
+}
+
+/* Tracking is what makes it wide, so narrow screens give some back. Halving it
+   buys more room than shrinking the type further would. */
+@media (max-width: 600px) {
+    .loading-title {
+        letter-spacing: 0.22em;
+        padding-left: 0.22em;
+    }
+
+    .loading-subtitle {
+        letter-spacing: 0.18em;
+        font-size: 0.8rem;
+        max-width: 100%;
+    }
 }
 
 .loading-subtitle {
@@ -455,13 +480,37 @@ html:not(.has-js) .skip-link {
 }
 
 @media (max-width: 600px) {
+    /* A sheet across the top, not a card over the middle.
+     *
+     * At 280px wide and 80vh tall on a 375px phone the panel covered most of
+     * the screen including the rover, so you could read about a section
+     * without being able to see where you were. The top is the only edge that
+     * is free: the joystick owns the bottom left, boost and brake the bottom
+     * right, and the rover sits near the middle of frame because the camera
+     * follows it. 38vh leaves all three visible. */
     .section-overlay {
-        width: 280px;
-        right: -300px;
-        padding: 16px;
+        top: -100%;
+        right: 0;
+        left: 0;
+        width: auto;
+        max-height: 38vh;
+        padding: 14px 16px;
+        transform: none;
+        border-width: 0 0 1px 0;
+        border-radius: 0 0 14px 14px;
+        transition: top 0.45s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0.45s;
     }
     .section-overlay.visible {
-        right: 12px;
+        top: 0;
+        right: 0;
+    }
+
+    /* Reset moves off the top-left corner, which the sheet now occupies, to
+       just above the joystick */
+    .touch-reset {
+        top: auto;
+        bottom: 176px;
+        left: 40px;
     }
     /* Narrow enough to stay in the gap between the joystick and the buttons */
     .credits {
@@ -632,6 +681,13 @@ html:not(.has-js) .skip-link {
         width: 44px;
         height: 44px;
     }
+    /* Landscape keeps the side card — there is width to spare — but 80vh of a
+       390px-tall screen is nearly all of it */
+    .section-overlay {
+        width: 300px;
+        max-height: 70vh;
+        padding: 14px;
+    }
     .loading-title {
         font-size: 2rem;
     }
@@ -700,7 +756,12 @@ html:not(.has-js) .skip-link {
 
 /* The narrow breakpoint parks the panel closer to the edge */
 @media (prefers-reduced-motion: reduce) and (max-width: 600px) {
+    /* Parked where it will be seen and faded in, rather than slid down. The
+       transition is restated because the shorthand above replaces it, and an
+       opacity-0 panel is still focusable. */
     .section-overlay {
-        right: 12px;
+        top: 0;
+        right: 0;
+        transition: opacity 0.25s ease, visibility 0s 0.25s;
     }
 }
