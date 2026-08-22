@@ -1,0 +1,20 @@
+# Normalise line endings.
+#
+# Several files in this repo carried a mix of CRLF and LF *within the same
+# file*, which is worse than either alone: a find-and-replace across a few
+# lines matches nothing, silently, and diffs show whole files as rewritten
+# when they are opened on another machine.
+#
+# text=auto stores everything as LF in the repository; eol=lf checks it out
+# as LF too, on every platform, so nothing can reintroduce the mix.
+* text=auto eol=lf
+
+# Never touched, whatever their contents look like
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.mp3 binary
+*.wav binary
+*.glb binary
+*.wasm binary

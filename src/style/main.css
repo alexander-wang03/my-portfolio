@@ -377,11 +377,33 @@ html:not(.has-js) .skip-link {
     100% { transform: translateX(285%); }
 }
 
+/* A <button>, so the world can be entered from the keyboard. Everything here
+   down to `color` is undoing the default button appearance, since it has to
+   keep looking like the line of text it replaced. */
 .loading-prompt {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 6px 10px;
+    font-family: inherit;
     font-size: 0.8rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: rgba(255, 255, 255, 0.3);
+}
+
+.loading-prompt:disabled {
+    cursor: default;
+}
+
+/* Visible focus ring, and only for keyboard use — this control takes focus by
+   itself once loading finishes, and a ring appearing under the mouse would be
+   noise. */
+.loading-prompt:focus-visible {
+    outline: 2px solid #ff9043;
+    outline-offset: 4px;
+    border-radius: 4px;
+    color: rgba(212, 165, 116, 1);
 }
 
 .loading-prompt-ready {

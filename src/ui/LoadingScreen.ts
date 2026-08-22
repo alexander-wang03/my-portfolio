@@ -14,7 +14,7 @@ export default class LoadingScreen extends EventEmitter {
     element: HTMLElement
     private progressFill: HTMLElement
     private progressBar: HTMLElement
-    private promptText: HTMLElement
+    private promptButton: HTMLButtonElement
     private ready = false
 
     constructor() {
@@ -23,9 +23,9 @@ export default class LoadingScreen extends EventEmitter {
         const element = document.querySelector<HTMLElement>('.loading-screen')
         const progressBar = element?.querySelector<HTMLElement>('.loading-progress')
         const progressFill = element?.querySelector<HTMLElement>('.loading-progress-fill')
-        const promptText = element?.querySelector<HTMLElement>('.loading-prompt')
+        const promptButton = element?.querySelector<HTMLButtonElement>('.loading-prompt')
 
-        if (!element || !progressBar || !progressFill || !promptText) {
+        if (!element || !progressBar || !progressFill || !promptButton) {
             // Thrown rather than patched over: Application is constructed inside
             // a try/catch that drops to the readable fallback, which is a better
             // outcome than a world nobody can see past a broken overlay
@@ -39,8 +39,12 @@ export default class LoadingScreen extends EventEmitter {
         this.element = element
         this.progressBar = progressBar
         this.progressFill = progressFill
-        this.promptText = promptText
+        this.promptButton = promptButton
 
+        // On the overlay, not the button. Clicking anywhere dismisses, as it
+        // always has — and a keyboard press on the button emits a click that
+        // bubbles up to here, so Enter and Space arrive by the same route with
+        // no second handler to keep in step.
         this.element.addEventListener('click', () => {
             if (!this.ready) return
             this.hide()
@@ -57,9 +61,16 @@ export default class LoadingScreen extends EventEmitter {
     setReady(): void {
         this.ready = true
         this.progressFill.style.width = '100%'
-        this.promptText.textContent = 'Click to Explore'
-        this.promptText.classList.add('loading-prompt-ready')
+        this.promptButton.textContent = 'Click to Explore'
+        this.promptButton.classList.add('loading-prompt-ready')
+        this.promptButton.disabled = false
         gsap.to(this.progressBar, { opacity: 0, duration: 0.5 })
+
+        // Hand focus to the way in, so Enter works without hunting for it.
+        // Only from a standing start: if the visitor has already tabbed
+        // somewhere — the skip link is the one other stop — leave them there.
+        const active = document.activeElement
+        if (!active || active === document.body) this.promptButton.focus()
     }
 
     private hide(): void {

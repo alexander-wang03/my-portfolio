@@ -16,12 +16,12 @@ import { FULL_NAME, TAGLINE } from './portfolio'
  */
 export function renderLoadingHtml(): string {
     return `
-    <div class="loading-screen" aria-hidden="true">
+    <div class="loading-screen">
         <h1 class="loading-title">${escapeHtml(FULL_NAME)}</h1>
         <p class="loading-subtitle">${escapeHtml(TAGLINE)}</p>
         <div class="loading-progress loading-progress--indeterminate">
             <div class="loading-progress-fill"></div>
         </div>
-        <p class="loading-prompt">Loading&hellip;</p>
+        <button class="loading-prompt" type="button" disabled>Loading&hellip;</button>
     </div>`
 }
