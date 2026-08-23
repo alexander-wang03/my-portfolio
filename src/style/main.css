@@ -41,7 +41,7 @@ body {
 
 .skip-link:focus {
     transform: translateY(0);
-    outline: 2px solid #ff9043;
+    outline: 1px solid #ff9043;
     outline-offset: 2px;
 }
 
@@ -400,7 +400,7 @@ html:not(.has-js) .skip-link {
    itself once loading finishes, and a ring appearing under the mouse would be
    noise. */
 .loading-prompt:focus-visible {
-    outline: 2px solid #ff9043;
+    outline: 1px solid #ff9043;
     outline-offset: 4px;
     border-radius: 4px;
     color: rgba(212, 165, 116, 1);

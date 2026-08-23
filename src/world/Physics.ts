@@ -90,8 +90,14 @@ const RESPAWN_EDGE_MARGIN = 8
  * every collision the rover has: raising it to quieten the ground silently
  * raises the bar for hitting a rock too. Filtering happens in
  * `reportImpacts` instead, where the two can be told apart.
+ *
+ * This one is compared against the raw force, which shrinks as the framerate
+ * drops, so it is set from the worst case: the lightest material's gate (40 N
+ * at 60fps) seen through the largest substep the loop allows (1/120, since dt
+ * is capped at 1/30). Below that it can never hide an impact the code would
+ * have wanted.
  */
-const IMPACT_EVENT_FLOOR = 800
+const IMPACT_EVENT_FLOOR = 20
 
 /** What was hit, so the sound can match the object rather than being generic. */
 export type ImpactMaterial = 'terrain' | 'default' | 'letter' | 'block'
@@ -127,6 +133,18 @@ const IMPACT_TUNING: Record<ImpactMaterial, ImpactTuning> = {
     letter: { minForce: 250, referenceForce: 2200, cooldown: 400 }, // a 3 kg block letter
     block: { minForce: 40, referenceForce: 350, cooldown: 400 }, // a 0.4 kg prop
 }
+
+/**
+ * The substep the figures above were measured at: 60fps, four substeps.
+ *
+ * They have to be pinned to one, because Rapier reports contact *force*, and
+ * force is impulse divided by the timestep. The same crash therefore reports
+ * a different number at a different framerate — half as much at 30fps — so
+ * thresholds in newtons quietly stop matching as soon as the device cannot
+ * hold 60. On a phone that silenced collisions altogether while the engine,
+ * which is driven by speed rather than by force, carried on as normal.
+ */
+const REFERENCE_SUBSTEP = 1 / 240
 
 /** Longest cooldown in the table, for expiring stale entries. */
 const MAX_IMPACT_COOLDOWN = Math.max(
@@ -787,7 +805,9 @@ export default class Physics extends EventEmitter {
             const material = this.impactMaterialFor(first, second)
             const tuning = IMPACT_TUNING[material]
 
-            const force = event.totalForceMagnitude()
+            // Scaled back to what this contact would have reported at 60fps, so
+            // one set of thresholds holds at any framerate
+            const force = event.totalForceMagnitude() * (this.world.timestep / REFERENCE_SUBSTEP)
             if (force < tuning.minForce) return
 
             // Must be normalised against what this object can actually produce
