@@ -787,3 +787,25 @@ html:not(.has-js) .skip-link {
         transition: opacity 0.25s ease, visibility 0s 0.25s;
     }
 }
+
+/* ── Performance readout (#debug only) ─────────────────────────────── */
+
+/* Top left, above everything including the section sheet, because it is only
+   ever on when someone is deliberately looking at it. Monospace and
+   pre-wrapped so the columns do not jitter as the numbers change width. */
+.perf-monitor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 300;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.72);
+    color: #7dff9b;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.45;
+    white-space: pre;
+    pointer-events: none;
+    border-bottom-right-radius: 6px;
+    text-shadow: 0 1px 2px #000;
+}

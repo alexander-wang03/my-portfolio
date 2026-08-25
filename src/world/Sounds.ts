@@ -3,9 +3,10 @@ import gsap from 'gsap'
 import type Time from '../engine/Utils/Time'
 import type Physics from './Physics'
 import type { ImpactMaterial } from './Physics'
+import EventEmitter from '../engine/Utils/EventEmitter'
 
-/** Contacts resolve in clusters, so collapse them into one audible hit. */
-const MIN_IMPACT_INTERVAL = 0.06
+/** Contacts resolve in clusters, so collapse them into one audible hit, in ms. */
+const MIN_IMPACT_INTERVAL = 60
 
 /** Milliseconds between horns. Holding the key repeats keydown, so it needs one. */
 const HORN_COOLDOWN = 350
@@ -174,7 +175,7 @@ export interface SoundsOptions {
     physics: Physics
 }
 
-export default class Sounds {
+export default class Sounds extends EventEmitter {
     private time: Time
     private physics: Physics
     private ctx: AudioContext | null = null
@@ -198,6 +199,8 @@ export default class Sounds {
     private cues = new Map<keyof typeof CUES, Howl>()
 
     constructor(options: SoundsOptions) {
+        super()
+
         this.time = options.time
         this.physics = options.physics
 
@@ -230,6 +233,17 @@ export default class Sounds {
         this.time.on('tick', () => this.update())
     }
 
+    /**
+     * Nudge the wind's context back if the browser parked it.
+     *
+     * Android suspends audio contexts on an app switch or a screen blank and
+     * does not always bring them back. Howler looks after its own; this one is
+     * ours.
+     */
+    private resumeContext(): void {
+        if (this.ctx?.state === 'suspended') void this.ctx.resume()
+    }
+
     private initAudio(): void {
         this.ctx = new AudioContext()
         this.masterGain = this.ctx.createGain()
@@ -237,6 +251,11 @@ export default class Sounds {
         this.masterGain.connect(this.ctx.destination)
 
         this.setupWind()
+
+        // The visibility handler covers an app switch, but not every way a
+        // context gets parked — a phone call, a screen blank, a browser that
+        // simply decides to. Any touch afterwards is a chance to bring it back.
+        window.addEventListener('pointerdown', () => this.resumeContext())
     }
 
     private setupWind(): void {
@@ -304,6 +323,8 @@ export default class Sounds {
         howl.volume(Math.pow(lerp(sample.volume, strength), 2))
         howl.rate(lerp(sample.rate, Math.random()))
         howl.play()
+
+        this.trigger('played', [name])
     }
 
     /** A hit, played from that material's recorded samples. */
@@ -335,9 +356,13 @@ export default class Sounds {
     private claimImpactSlot(): boolean {
         if (this.muted) return false
 
-        // Howler runs its own context, so this has to work before the wind's
-        // has been created
-        const now = this.ctx ? this.ctx.currentTime : performance.now() / 1000
+        // A wall clock, deliberately. This used to read `ctx.currentTime`,
+        // which is the wind's AudioContext — a second context, separate from
+        // Howler's, that nothing ever resumed. A suspended context does not
+        // advance its clock, so `now` froze, every later contact looked like
+        // it had arrived in the same instant as the last one, and impacts went
+        // silent for good while the engine played on through Howler's context.
+        const now = performance.now()
 
         if (now - this.lastImpactAt < MIN_IMPACT_INTERVAL) return false
         this.lastImpactAt = now
@@ -470,6 +495,7 @@ export default class Sounds {
 
     private setVisibility(): void {
         document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) this.resumeContext()
             Howler.mute(document.hidden || this.muted)
 
             if (!this.masterGain) return

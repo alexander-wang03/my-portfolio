@@ -73,6 +73,21 @@ export default class LoadingScreen extends EventEmitter {
         if (!active || active === document.body) this.promptButton.focus()
     }
 
+    /**
+     * Say so, rather than loading forever.
+     *
+     * A bar that simply stops is indistinguishable from a slow connection, so
+     * it can hide a bug for as long as someone is willing to wait. The skip
+     * link is still the way out, and it is the first thing Tab reaches.
+     */
+    setFailed(): void {
+        this.ready = false
+        this.progressBar.classList.remove('loading-progress--indeterminate')
+        this.progressFill.style.background = '#ff6b5e'
+        this.promptButton.textContent = 'Could not load — see the console'
+        this.promptButton.disabled = true
+    }
+
     private hide(): void {
         this.ready = false
 

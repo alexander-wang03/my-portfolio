@@ -12,6 +12,7 @@ import Camera from './Camera'
 import World from '../world/World'
 import LoadingScreen from '../ui/LoadingScreen'
 import { revealCredits } from '../ui/Credits'
+import PerfMonitor from '../ui/PerfMonitor'
 
 export interface ApplicationOptions {
     canvas: HTMLCanvasElement
@@ -117,6 +118,8 @@ export default class Application {
     world!: World
     composer!: EffectComposer
     loadingScreen: LoadingScreen
+    /** Frame-time readout, only built for #debug. */
+    perf?: PerfMonitor
 
     constructor(options: ApplicationOptions) {
         this.options = options
@@ -127,8 +130,8 @@ export default class Application {
         this.quality = detectQuality()
 
         this.setConfig()
-        this.setDebug()
         this.setRenderer()
+        this.setDebug()
         this.setCamera()
         this.setPostProcessing()
 
@@ -140,6 +143,19 @@ export default class Application {
     }
 
     private async initPhysicsAndWorld(): Promise<void> {
+        try {
+            await this.buildWorld()
+        } catch (error) {
+            // Nothing awaits this method, so a throw became an unhandled
+            // rejection: the bar stopped where it was, the console stayed
+            // empty, and the page waited forever. Whatever breaks next should
+            // say so.
+            console.error('[Application] the world failed to build', error)
+            this.loadingScreen.setFailed()
+        }
+    }
+
+    private async buildWorld(): Promise<void> {
         // No `RAPIER.init()`. The compat build shipped its wasm inlined as
         // base64 and had to decode it on demand, which is what that call did.
         // This build imports a real .wasm module, so it is ready by the time
@@ -184,9 +200,16 @@ export default class Application {
     }
 
     private setDebug(): void {
-        if (this.config.debug) {
-            this.debug = this.options.debug
-        }
+        if (!this.config.debug) return
+
+        this.debug = this.options.debug
+
+        // After the renderer, so it can read the pixel ratio it settled on
+        this.perf = new PerfMonitor({
+            time: this.time,
+            renderer: this.renderer,
+            quality: this.quality,
+        })
     }
 
     private setRenderer(): void {
@@ -279,9 +302,24 @@ export default class Application {
             renderer: this.renderer,
         })
         this.scene.add(this.world.container)
+
         await this.world.init((progress) => {
             this.loadingScreen.setProgress(0.6 + progress * 0.4)
         })
+
+        // After init, not before: World builds physics and sounds inside
+        // init(), so neither exists on the instance until it resolves.
+        //
+        // Count what physics reports and what audio actually plays, side by
+        // side. When collisions went silent on a phone the hard part was not
+        // fixing it but knowing which half to look at; these two numbers
+        // answer that in a glance.
+        if (this.perf) {
+            const perf = this.perf
+            this.world.physics.on('impact', () => perf.count('hits'))
+            this.world.physics.on('land', () => perf.count('lands'))
+            this.world.sounds.on('played', () => perf.count('sounds'))
+        }
     }
 
     private setRenderLoop(): void {
