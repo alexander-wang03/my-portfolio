@@ -17,7 +17,11 @@ import { FULL_NAME, TAGLINE } from './portfolio'
 export function renderLoadingHtml(): string {
     return `
     <div class="loading-screen">
-        <h1 class="loading-title">${escapeHtml(FULL_NAME)}</h1>
+        <!-- Deliberately not a heading. It repeats the page title as decoration,
+             and a second h1 competes with the real one in the readable version
+             below — visible to the outline and to screen readers now that this
+             screen is no longer aria-hidden. -->
+        <p class="loading-title">${escapeHtml(FULL_NAME)}</p>
         <p class="loading-subtitle">${escapeHtml(TAGLINE)}</p>
         <div class="loading-progress loading-progress--indeterminate">
             <div class="loading-progress-fill"></div>

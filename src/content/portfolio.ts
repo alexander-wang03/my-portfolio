@@ -17,6 +17,14 @@
 export const SITE_URL = 'https://alexanderwang.io'
 
 export const FULL_NAME = 'ALEXANDER WANG'
+/**
+ * Title-case forms, for places the all-caps display name would read as
+ * shouting: the browser tab, and the label under a home-screen icon.
+ * `SITE_SHORT_NAME` is kept under 12 characters, which is roughly where
+ * launchers start truncating.
+ */
+export const SITE_NAME = 'Alexander Wang'
+export const SITE_SHORT_NAME = 'Alex Wang'
 /** Short form, built as physical block letters at spawn. */
 export const BLOCK_LETTERS_NAME = 'ALEX WANG'
 export const TAGLINE = 'My World'

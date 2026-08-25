@@ -5,7 +5,8 @@ import fs from 'fs'
 import path from 'path'
 import { renderFallbackHtml } from './src/content/fallback'
 import { renderLoadingHtml } from './src/content/loading'
-import { SITE_URL } from './src/content/portfolio'
+import { renderStructuredData } from './src/content/structuredData'
+import { ABOUT, SITE_NAME, SITE_SHORT_NAME, SITE_URL } from './src/content/portfolio'
 
 /**
  * Writes the portfolio content into index.html as real markup.
@@ -20,6 +21,8 @@ function fallbackContent(): Plugin {
     name: 'portfolio-fallback-content',
     transformIndexHtml(html) {
       return html
+        .replace('</head>', `    ${renderStructuredData()}
+</head>`)
         .replace('<!--loading-screen-->', renderLoadingHtml())
         .replace('</body>', `${renderFallbackHtml()}\n</body>`)
     },
@@ -211,6 +214,33 @@ function seoFiles(): Plugin {
           '',
         ].join(`
 `),
+      })
+
+      // Android's "add to home screen" reads this; without it the launcher
+      // guesses a name from <title> and an icon from apple-touch-icon.
+      this.emitFile({
+        type: 'asset',
+        fileName: 'site.webmanifest',
+        source: JSON.stringify({
+          name: SITE_NAME,
+          short_name: SITE_SHORT_NAME,
+          description: ABOUT.tagline,
+          start_url: '/',
+          scope: '/',
+          // Launched from the home screen it opens without browser chrome,
+          // which suits a full-screen world. In a normal tab this is ignored.
+          display: 'standalone',
+          background_color: '#0a0504',
+          theme_color: '#0a0504',
+          icons: [
+            { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            // Padded to the 80% safe circle, so a launcher that crops to its
+            // own shape takes the background rather than the monogram
+            { src: '/icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          ],
+        }, null, 2) + `
+`,
       })
 
       this.emitFile({
