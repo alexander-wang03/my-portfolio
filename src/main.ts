@@ -56,7 +56,13 @@ async function loadDebugGui(): Promise<GUI | undefined> {
     if (window.location.hash !== '#debug') return undefined
 
     const dat = await import('dat.gui')
-    return new dat.GUI({ width: 420 })
+    // dat.gui pins itself to the top right at a fixed width. 420 is wider
+    // than a phone, so on a narrow screen it covers the whole top edge and
+    // sits over the frame-time readout in the other corner. Leave that corner
+    // room, with a floor so the labels stay readable.
+    const width = Math.max(190, Math.min(420, window.innerWidth - 210))
+
+    return new dat.GUI({ width })
 }
 
 async function start(canvas: HTMLCanvasElement): Promise<void> {

@@ -13,6 +13,7 @@ import World from '../world/World'
 import LoadingScreen from '../ui/LoadingScreen'
 import { revealCredits } from '../ui/Credits'
 import PerfMonitor from '../ui/PerfMonitor'
+import AdaptiveResolution from './AdaptiveResolution'
 
 export interface ApplicationOptions {
     canvas: HTMLCanvasElement
@@ -120,6 +121,7 @@ export default class Application {
     loadingScreen: LoadingScreen
     /** Frame-time readout, only built for #debug. */
     perf?: PerfMonitor
+    adaptiveResolution!: AdaptiveResolution
 
     constructor(options: ApplicationOptions) {
         this.options = options
@@ -134,6 +136,13 @@ export default class Application {
         this.setDebug()
         this.setCamera()
         this.setPostProcessing()
+
+        this.adaptiveResolution = new AdaptiveResolution({
+            time: this.time,
+            renderer: this.renderer,
+            composer: this.composer,
+            quality: this.quality,
+        })
 
         this.loadingScreen = new LoadingScreen()
         this.loadingScreen.on('start', () => this.onStart())
@@ -174,6 +183,9 @@ export default class Application {
         // Held back until here — before this the loading screen either has not
         // been built yet, or is covering them
         revealCredits()
+
+        // Only now are frame times representative of actually driving around
+        this.adaptiveResolution.start()
     }
 
     private setConfig(): void {
