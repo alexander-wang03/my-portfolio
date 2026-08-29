@@ -14,6 +14,9 @@ const WINDOW = 120
 /** Milliseconds between redraws of the text. */
 const REDRAW_INTERVAL = 250
 
+/** Where the dragged position is kept between reloads. */
+const POSITION_KEY = 'perf-monitor-position'
+
 /**
  * Frame-time readout for `#debug`.
  *
@@ -31,6 +34,9 @@ export default class PerfMonitor {
     private frames: number[] = []
     private lastRedraw = 0
     private counters = new Map<string, number>()
+    private dragging = false
+    private x = 0
+    private y = 0
 
     constructor(private options: PerfMonitorOptions) {
         this.element = document.createElement('div')
@@ -40,6 +46,76 @@ export default class PerfMonitor {
         document.body.appendChild(this.element)
 
         this.options.time.on('tick', () => this.update())
+
+        this.restorePosition()
+        this.setDragging()
+
+        // Rotating a phone can leave it off-screen entirely
+        window.addEventListener('resize', () => this.moveTo(this.x, this.y))
+    }
+
+    /**
+     * Let it be dragged anywhere.
+     *
+     * Every fixed corner is the wrong one on a phone: the top left collides
+     * with dat.gui, which pins itself to the top right at a width wider than
+     * the screen, and the bottom is where the joystick and buttons live. Rather
+     * than keep choosing, it goes where it is put, and stays there across
+     * reloads so a position only has to be chosen once.
+     *
+     * Pointer events rather than touch events, so the same code serves a
+     * finger and a mouse.
+     */
+    private setDragging(): void {
+        let grabX = 0
+        let grabY = 0
+
+        this.element.addEventListener('pointerdown', (event) => {
+            event.preventDefault()
+            this.element.setPointerCapture(event.pointerId)
+            const box = this.element.getBoundingClientRect()
+            grabX = event.clientX - box.left
+            grabY = event.clientY - box.top
+            this.dragging = true
+        })
+
+        this.element.addEventListener('pointermove', (event) => {
+            if (!this.dragging) return
+            this.moveTo(event.clientX - grabX, event.clientY - grabY)
+        })
+
+        const drop = (event: PointerEvent) => {
+            if (!this.dragging) return
+            this.dragging = false
+            this.element.releasePointerCapture(event.pointerId)
+            try {
+                localStorage.setItem(POSITION_KEY, JSON.stringify({ x: this.x, y: this.y }))
+            } catch {
+                // Private browsing, or storage full. Not worth a word.
+            }
+        }
+        this.element.addEventListener('pointerup', drop)
+        this.element.addEventListener('pointercancel', drop)
+    }
+
+    /** Clamped, so it can never be dragged or rotated out of reach. */
+    private moveTo(x: number, y: number): void {
+        const box = this.element.getBoundingClientRect()
+        this.x = Math.max(0, Math.min(x, window.innerWidth - box.width))
+        this.y = Math.max(0, Math.min(y, window.innerHeight - box.height))
+        this.element.style.left = `${this.x}px`
+        this.element.style.top = `${this.y}px`
+    }
+
+    private restorePosition(): void {
+        try {
+            const saved = localStorage.getItem(POSITION_KEY)
+            if (!saved) return
+            const { x, y } = JSON.parse(saved)
+            if (typeof x === 'number' && typeof y === 'number') this.moveTo(x, y)
+        } catch {
+            // A corrupt value just means it opens where it always did
+        }
     }
 
     /**

@@ -805,19 +805,21 @@ html:not(.has-js) .skip-link {
     font-size: 11px;
     line-height: 1.45;
     white-space: pre;
-    pointer-events: none;
+    /* Grabbable, and `touch-action: none` so dragging it does not also pan
+       or zoom the page underneath */
+    pointer-events: auto;
+    touch-action: none;
+    cursor: move;
+    user-select: none;
+    -webkit-user-select: none;
     border-bottom-right-radius: 6px;
     text-shadow: 0 1px 2px #000;
 }
 
-/* Narrow screens: the panel above is nearly the full width even after being
-   capped, so the readout drops to the bottom left instead — clear of the
-   joystick (which tops out 160px up) and of the reset button above it. */
+/* Smaller on a phone, but the position is the visitor's to choose — see
+   `setDragging` in PerfMonitor. */
 @media (max-width: 600px) {
     .perf-monitor {
-        top: auto;
-        bottom: 240px;
         font-size: 10px;
-        border-radius: 0 6px 6px 0;
     }
 }
