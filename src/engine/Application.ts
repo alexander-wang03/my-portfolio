@@ -13,7 +13,7 @@ import World from '../world/World'
 import LoadingScreen from '../ui/LoadingScreen'
 import { revealCredits } from '../ui/Credits'
 import PerfMonitor from '../ui/PerfMonitor'
-import AdaptiveResolution from './AdaptiveResolution'
+import AdaptiveQuality from './AdaptiveQuality'
 
 export interface ApplicationOptions {
     canvas: HTMLCanvasElement
@@ -121,7 +121,8 @@ export default class Application {
     loadingScreen: LoadingScreen
     /** Frame-time readout, only built for #debug. */
     perf?: PerfMonitor
-    adaptiveResolution!: AdaptiveResolution
+    adaptiveQuality!: AdaptiveQuality
+    private blurPasses: ShaderPass[] = []
 
     constructor(options: ApplicationOptions) {
         this.options = options
@@ -136,13 +137,6 @@ export default class Application {
         this.setDebug()
         this.setCamera()
         this.setPostProcessing()
-
-        this.adaptiveResolution = new AdaptiveResolution({
-            time: this.time,
-            renderer: this.renderer,
-            composer: this.composer,
-            quality: this.quality,
-        })
 
         this.loadingScreen = new LoadingScreen()
         this.loadingScreen.on('start', () => this.onStart())
@@ -185,7 +179,7 @@ export default class Application {
         revealCredits()
 
         // Only now are frame times representative of actually driving around
-        this.adaptiveResolution.start()
+        this.adaptiveQuality.start()
     }
 
     private setConfig(): void {
@@ -275,11 +269,16 @@ export default class Application {
         blurPassV.uniforms.uStrength.value.set(0, 1)
 
         // Two full-screen passes at 5 texture fetches each — the first thing
-        // to go on weaker hardware
-        if (this.quality.blur) {
-            this.composer.addPass(blurPassH)
-            this.composer.addPass(blurPassV)
-        }
+        // to go on weaker hardware.
+        //
+        // Always added, then switched off, rather than omitted. A pass that was
+        // never added cannot be turned back on later, and whether a device can
+        // afford these is not knowable until it has drawn a few frames.
+        blurPassH.enabled = this.quality.blur
+        blurPassV.enabled = this.quality.blur
+        this.composer.addPass(blurPassH)
+        this.composer.addPass(blurPassV)
+        this.blurPasses = [blurPassH, blurPassV]
 
         // Glow overlay (warm pink radial glow)
         const glowPass = new ShaderPass(GlowShader)
@@ -318,6 +317,19 @@ export default class Application {
         await this.world.init((progress) => {
             this.loadingScreen.setProgress(0.6 + progress * 0.4)
         })
+
+        // Also after init: it drives the shadow limits, and Shadows is built
+        // in there too
+        this.adaptiveQuality = new AdaptiveQuality({
+            time: this.time,
+            renderer: this.renderer,
+            composer: this.composer,
+            quality: this.quality,
+            blurPasses: this.blurPasses,
+            shadows: this.world.shadows,
+        })
+
+        if (this.perf) this.perf.attachAdaptive(this.adaptiveQuality)
 
         // After init, not before: World builds physics and sounds inside
         // init(), so neither exists on the instance until it resolves.

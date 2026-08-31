@@ -41,8 +41,8 @@ export default class Shadows {
 
     private terrain: Terrain
     private physics: Physics
-    private maxItems: number
-    private maxDistance: number
+    private maxItems!: number
+    private maxDistance!: number
 
     /** The nearest `maxItems` casters, refreshed periodically. */
     private visible: ShadowItem[] = []
@@ -51,12 +51,23 @@ export default class Shadows {
     constructor(options: ShadowsOptions) {
         this.terrain = options.terrain
         this.physics = options.physics
-        this.maxItems = Math.min(options.maxItems, Terrain.MAX_OBJ_SHADOWS)
-        this.maxDistance = options.maxDistance
+        this.setLimits(options.maxItems, options.maxDistance)
 
         options.time.on('tick', () => {
             this.update()
         })
+    }
+
+    /**
+     * Change how many shadows are drawn, and how far out.
+     *
+     * Both are safe to move at any time: `maxItems` only slices an
+     * already-sorted list, and the data texture behind it is always allocated
+     * for `Terrain.MAX_OBJ_SHADOWS` regardless of how many are in use.
+     */
+    setLimits(maxItems: number, maxDistance: number): void {
+        this.maxItems = Math.min(maxItems, Terrain.MAX_OBJ_SHADOWS)
+        this.maxDistance = maxDistance
     }
 
     add(reference: Object3D, options: ShadowAddOptions): void {

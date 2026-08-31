@@ -1,11 +1,13 @@
 import type * as THREE from 'three'
 import type Time from '../engine/Utils/Time'
 import type { QualitySettings } from '../engine/Quality'
+import type AdaptiveQuality from '../engine/AdaptiveQuality'
 
 export interface PerfMonitorOptions {
     time: Time
     renderer: THREE.WebGLRenderer
     quality: QualitySettings
+    adaptive?: AdaptiveQuality
 }
 
 /** How many frames the rolling window holds. ~2s at 60fps, ~4s at 30. */
@@ -125,6 +127,11 @@ export default class PerfMonitor {
      * being heard?" — the question that separates a physics problem from an
      * audio one, and which took several rounds of guessing to settle once.
      */
+    /** The ladder is built after the world, so it arrives later than this does. */
+    attachAdaptive(adaptive: AdaptiveQuality): void {
+        this.options.adaptive = adaptive
+    }
+
     count(name: string): void {
         this.counters.set(name, (this.counters.get(name) ?? 0) + 1)
     }
@@ -153,7 +160,14 @@ export default class PerfMonitor {
             `1% low  ${(1000 / low).toFixed(0)} fps   ${low.toFixed(1)} ms`,
             `${quality.tier}  dpr ${renderer.getPixelRatio().toFixed(2)}/${window.devicePixelRatio}`,
             `${info.calls} draws   ${(info.triangles / 1000).toFixed(0)}k tris`,
-            `${window.innerWidth}x${window.innerHeight}   shadows ${quality.maxObjectShadows}  blur ${quality.blur ? 'on' : 'off'}`,
+            // What is actually in force, which after a few seconds is the
+            // measured rung rather than the tier the guess picked
+            ((rung) => `${window.innerWidth}x${window.innerHeight}   shadows ${rung.shadowItems}  blur ${rung.blur ? 'on' : 'off'}`)(
+                this.options.adaptive?.current ?? {
+                    shadowItems: quality.maxObjectShadows,
+                    blur: quality.blur,
+                },
+            ),
             counters,
         ].filter(Boolean).join('\n')
     }
