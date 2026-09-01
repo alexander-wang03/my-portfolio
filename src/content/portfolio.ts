@@ -13,8 +13,16 @@
  * canonical link, the Open Graph and Twitter tags, sitemap.xml and the
  * Sitemap line in robots.txt. They are generated from here at build time —
  * a stale URL in any one of them is the kind of thing nobody notices.
+ *
+ * The `www.` is not cosmetic. The apex domain answers every request with a
+ * 308 to this host, so naming the apex here pointed all four of the above at
+ * an address that redirects: a canonical link that is not the canonical URL,
+ * two sitemap entries a crawler reports as redirects rather than pages, and
+ * an og:image that scrapers which do not follow redirects never fetch. This
+ * has to be whichever host actually serves a 200 — change it here if the
+ * redirect is ever flipped to point the other way.
  */
-export const SITE_URL = 'https://alexanderwang.io'
+export const SITE_URL = 'https://www.alexanderwang.io'
 
 export const FULL_NAME = 'ALEXANDER WANG'
 /**

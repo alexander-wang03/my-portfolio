@@ -3,7 +3,7 @@
 An interactive portfolio you explore by driving a rover across Mars. Built with
 Three.js and Rapier, inspired by [Bruno Simon's folio-2019](https://github.com/brunosimon/folio-2019).
 
-**Live:** <https://alexanderwang.io>
+**Live:** <https://www.alexanderwang.io>
 
 ## Running it
 
@@ -75,6 +75,23 @@ A few things that are less obvious than they look:
 - **`robots.txt` and `sitemap.xml` are generated at build time**, not kept in
   `static/`. They, the canonical link and the Open Graph URLs all derive from
   `SITE_URL` in `content/portfolio.ts`, so there is one address to change.
+  That constant must name the host that answers **200**, not the one that
+  redirects to it — the apex 308s to `www`, so it is the `www` form.
+- **`vercel.json` sets cache headers**, which JSON cannot explain in place:
+  - `/assets/*` is `immutable` for a year. Vite puts a content hash in each of
+    those filenames, so the contents behind one can never change — a new build
+    produces new names. Vercel's default of `max-age=0, must-revalidate` spent
+    a round trip per file per visit re-checking things that are unchangeable
+    by construction, and the largest of them is Rapier's 1.4 MB wasm.
+  - Everything under `models/`, `sounds/` and `icons/` keeps its name across
+    builds, so it gets an hour of freshness and a day of
+    `stale-while-revalidate` instead: a returning visitor gets the cached copy
+    immediately while a fresh one is fetched behind them. Replacing a model
+    can therefore be one load late, and then corrects itself.
+  - `index.html` is deliberately left on Vercel's default. It carries the
+    hashed filenames, so caching it is what would actually go stale.
+  - `CV.pdf` is left on the default too — a résumé gets replaced, and it
+    should be the new one the moment it is.
 - `prefers-reduced-motion` is honoured throughout, and quality scales down on
   low-power devices.
 
