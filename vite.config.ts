@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import glsl from 'vite-plugin-glsl'
 import wasm from 'vite-plugin-wasm'
+import { execFileSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { renderFallbackHtml } from './src/content/fallback'
@@ -156,20 +157,82 @@ function downloadProgress(): Plugin {
  * that resolve to the same document. The résumé is genuinely its own URL, and
  * PDFs are indexed.
  *
- * `lastmod` comes from the mtime of the file that actually holds the content,
- * not from the build clock, so rebuilding without editing anything does not
- * keep telling crawlers the page changed.
+ * `lastmod` is the date the content behind each URL last actually changed, so
+ * that rebuilding without editing anything does not keep telling crawlers the
+ * page changed. It comes from git rather than from the filesystem, because
+ * `mtime` cannot answer that question on a build server: git does not record
+ * mtimes, so a fresh checkout stamps every file with the time it was written
+ * to disk. That is the build clock wearing a disguise, and it made every
+ * deploy announce that both pages had just changed.
+ *
+ * Omitted entirely rather than guessed when it cannot be established. It is an
+ * optional element, and search engines discount a `lastmod` they find
+ * unreliable — a date that advances on every deploy is precisely that pattern,
+ * so a wrong one is worse than none.
  */
 function seoFiles(): Plugin {
   const CONTENT_SOURCE = 'src/content/portfolio.ts'
   const RESUME_FILE = 'static/CV.pdf'
 
-  const lastModified = (file: string): string => {
+  /** Run git, returning '' rather than throwing when it cannot answer. */
+  const git = (...args: string[]): string => {
     try {
-      return fs.statSync(path.resolve(__dirname, file)).mtime.toISOString().slice(0, 10)
+      return execFileSync('git', args, {
+        cwd: __dirname,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim()
     } catch {
-      return new Date().toISOString().slice(0, 10)
+      return ''
     }
+  }
+
+  const insideRepo = git('rev-parse', '--is-inside-work-tree') === 'true'
+
+  /**
+   * Commits where a shallow clone's history stops.
+   *
+   * These matter because `git log` does not report the truncation — it reports
+   * the boundary commit. Every file that was last touched before it looks like
+   * it was created there, so asking a depth-10 clone when `CV.pdf` last
+   * changed cheerfully returns the date of HEAD. Verified against a `--depth 1`
+   * clone of this repo, which dated a file from February to today.
+   */
+  const shallowBoundaries = ((): Set<string> => {
+    if (!insideRepo) return new Set()
+    try {
+      const file = path.resolve(__dirname, git('rev-parse', '--git-path', 'shallow'))
+      return new Set(fs.readFileSync(file, 'utf8').split(`
+`).map((line) => line.trim()).filter(Boolean))
+    } catch {
+      return new Set() // no such file: a complete clone, nothing to distrust
+    }
+  })()
+
+  const asDate = (iso: string): string => iso.slice(0, 10)
+
+  const mtime = (file: string): string | null => {
+    try {
+      return asDate(fs.statSync(path.resolve(__dirname, file)).mtime.toISOString())
+    } catch {
+      return null
+    }
+  }
+
+  const lastModified = (file: string): string | null => {
+    // No repository at all — a downloaded copy rather than a clone, where the
+    // filesystem is the only record there is and its mtimes are real edits.
+    if (!insideRepo) return mtime(file)
+
+    // Committed history describes committed content. Local edits that have not
+    // been committed are still real edits, and only the filesystem knows them.
+    if (git('status', '--porcelain', '--', file) !== '') return mtime(file)
+
+    const [sha, iso] = git('log', '-1', '--format=%H %cI', '--', file).split(' ')
+    if (!sha || !iso) return null // untracked, or no history to read
+    if (shallowBoundaries.has(sha)) return null // the truncation described above
+
+    return asDate(iso)
   }
 
   return {
@@ -188,14 +251,27 @@ function seoFiles(): Plugin {
 
     generateBundle() {
       const pages = [
-        { loc: '/', lastmod: lastModified(CONTENT_SOURCE), changefreq: 'monthly', priority: '1.0' },
-        { loc: '/CV.pdf', lastmod: lastModified(RESUME_FILE), changefreq: 'yearly', priority: '0.5' },
-      ]
+        { loc: '/', source: CONTENT_SOURCE, changefreq: 'monthly', priority: '1.0' },
+        { loc: '/CV.pdf', source: RESUME_FILE, changefreq: 'yearly', priority: '0.5' },
+      ].map((page) => ({ ...page, lastmod: lastModified(page.source) }))
+
+      const undated = pages.filter((page) => page.lastmod === null)
+      if (undated.length > 0) {
+        // Loud, because the likely cause is a shallow clone on a build server
+        // and the symptom is silent: a sitemap that is merely less informative
+        // than it was, with nothing to say why.
+        this.warn(
+          `sitemap.xml: no lastmod for ${undated.map((page) => page.loc).join(', ')} — ` +
+          'could not read when the content last changed. On Vercel this means a ' +
+          'shallow clone; set VERCEL_DEEP_CLONE=1 to give the build real history.',
+        )
+      }
 
       const urls = pages.map((page) => [
         '  <url>',
         `    <loc>${SITE_URL}${page.loc}</loc>`,
-        `    <lastmod>${page.lastmod}</lastmod>`,
+        // Left out rather than guessed — see the note on this plugin
+        ...(page.lastmod ? [`    <lastmod>${page.lastmod}</lastmod>`] : []),
         `    <changefreq>${page.changefreq}</changefreq>`,
         `    <priority>${page.priority}</priority>`,
         '  </url>',

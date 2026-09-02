@@ -77,6 +77,12 @@ A few things that are less obvious than they look:
   `SITE_URL` in `content/portfolio.ts`, so there is one address to change.
   That constant must name the host that answers **200**, not the one that
   redirects to it — the apex 308s to `www`, so it is the `www` form.
+  Their `lastmod` dates come from **git, not from `mtime`**: git does not
+  record mtimes, so on a build server every file is stamped with the moment it
+  was checked out, and every deploy claimed both pages had just changed. A
+  shallow clone cannot answer the question either — it reports its boundary
+  commit for everything older — so that case is detected and `lastmod` is left
+  out rather than guessed. `VERCEL_DEEP_CLONE=1` restores it.
 - **`vercel.json` sets cache headers**, which JSON cannot explain in place:
   - `/assets/*` is `immutable` for a year. Vite puts a content hash in each of
     those filenames, so the contents behind one can never change — a new build
