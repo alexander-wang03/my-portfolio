@@ -75,7 +75,10 @@ async function start(canvas: HTMLCanvasElement): Promise<void> {
         // The visitor took the skip link while this was still downloading
         if (abandoned) return
 
-        application = new module.default({ canvas, debug })
+        // `onFatal` covers what happens after a good start goes wrong — most
+        // often a WebGL context the browser reclaimed and never gave back.
+        // Same destination as the no-WebGL path: the readable version.
+        application = new module.default({ canvas, debug, onFatal: showFallback })
     } catch (error) {
         console.error('Could not start the 3D world', error)
         showFallback()

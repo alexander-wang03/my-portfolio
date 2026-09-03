@@ -50,7 +50,13 @@ src/
   shaders/    GLSL for terrain, matcaps, floor, dust
   style/      main.css
 static/       models, matcaps, sounds, CV, favicons — served from /
+design/       source art that should not be served (the OG screenshot)
 ```
+
+Anything in `static/` is published, referenced or not. `design/` exists for
+files that are kept but must not get a public URL — `og-source.png` is the
+full screenshot `og-image.png` was cropped from, worth having when the link
+preview needs regenerating and not worth serving.
 
 ## Notes
 

@@ -6,6 +6,7 @@ export default class Time extends EventEmitter {
     elapsed: number
     delta: number
     private ticker: number
+    private running: boolean
 
     constructor() {
         super()
@@ -15,9 +16,10 @@ export default class Time extends EventEmitter {
         this.elapsed = 0
         this.delta = 16
         this.ticker = 0
+        this.running = false
 
         this.tick = this.tick.bind(this)
-        this.tick()
+        this.play()
     }
 
     private tick(): void {
@@ -35,7 +37,27 @@ export default class Time extends EventEmitter {
         this.trigger('tick')
     }
 
+    /**
+     * Start ticking, or resume after `stop()`. Safe to call when already
+     * running — a second `requestAnimationFrame` loop would double every
+     * physics step and every animation on the page.
+     *
+     * `current` is reset before restarting because it still holds the
+     * timestamp from before the pause, so the first frame back would report
+     * the entire gap as one delta. The clamp below would cap it at 60ms, but a
+     * clamped lie is still a lie: the world would lurch forward as though the
+     * rover had kept driving while the context was gone.
+     */
+    play(): void {
+        if (this.running) return
+
+        this.running = true
+        this.current = Date.now()
+        this.tick()
+    }
+
     stop(): void {
+        this.running = false
         window.cancelAnimationFrame(this.ticker)
     }
 }

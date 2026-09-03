@@ -13,10 +13,28 @@ import World from '../world/World'
 import LoadingScreen from '../ui/LoadingScreen'
 import { revealCredits } from '../ui/Credits'
 import PerfMonitor from '../ui/PerfMonitor'
+import ContextNotice from '../ui/ContextNotice'
 import AdaptiveQuality from './AdaptiveQuality'
+
+/**
+ * How long to wait for a lost WebGL context to come back before giving up on
+ * it and handing over to the text version.
+ *
+ * Generous, because a context is usually restored within a second if it is
+ * going to be at all, and the cost of waiting is a visible message rather than
+ * a blank screen. The cost of giving up too early is throwing away a session
+ * that would have recovered.
+ */
+const CONTEXT_RESTORE_GRACE = 10000
 
 export interface ApplicationOptions {
     canvas: HTMLCanvasElement
+    /**
+     * Called when the 3D world cannot continue and something else should take
+     * over the page. Passed in rather than handled here because the text
+     * version, and the teardown that reveals it, belong to `main.ts`.
+     */
+    onFatal?: () => void
     /**
      * Debug panel, when the visitor asked for one with `#debug`.
      *
@@ -123,6 +141,10 @@ export default class Application {
     perf?: PerfMonitor
     adaptiveQuality!: AdaptiveQuality
     private blurPasses: ShaderPass[] = []
+    private contextNotice: ContextNotice
+    private contextLost = false
+    /** Set by `stop()`. Once true the application never runs again. */
+    private stopped = false
 
     constructor(options: ApplicationOptions) {
         this.options = options
@@ -131,9 +153,11 @@ export default class Application {
         this.time = new Time()
         this.sizes = new Sizes()
         this.quality = detectQuality()
+        this.contextNotice = new ContextNotice()
 
         this.setConfig()
         this.setRenderer()
+        this.setContextLossHandling()
         this.setDebug()
         this.setCamera()
         this.setPostProcessing()
@@ -205,6 +229,82 @@ export default class Application {
         )
     }
 
+    /**
+     * Survive the browser taking the WebGL context away.
+     *
+     * This is routine on a phone: switch apps, let the system come under
+     * memory pressure, come back to a canvas that never draws again. Nothing
+     * throws and nothing logs, so without this the page simply appears frozen.
+     *
+     * Three.js already handles the renderer half — it calls `preventDefault`,
+     * makes `render()` a no-op while the context is gone, and rebuilds its
+     * whole resource table on restore (`properties = new WebGLProperties()`),
+     * so every texture, geometry and render target re-uploads on next use.
+     * There is nothing of ours to rebuild: the one texture we write to by hand
+     * is flagged `needsUpdate` every frame anyway.
+     *
+     * What is left is the part Three has no opinion about — telling the
+     * visitor, not stepping the world forward through a gap it did not render,
+     * and deciding when a context is not coming back.
+     */
+    private setContextLossHandling(): void {
+        let graceTimer = 0
+
+        const giveUp = (): void => {
+            this.stop() // clears the notice as well as the loop
+            this.options.onFatal?.()
+        }
+
+        /**
+         * Count down only while the page is actually on screen.
+         *
+         * The common cause of a lost context is being backgrounded, so the
+         * timer would otherwise be measuring how long the visitor spent in
+         * another app. Coming back to the text version because a phone call
+         * ran long would be the wrong outcome, and the restore often arrives
+         * at the moment the tab is shown again.
+         */
+        const startGrace = (): void => {
+            window.clearTimeout(graceTimer)
+            if (document.hidden) return
+            graceTimer = window.setTimeout(giveUp, CONTEXT_RESTORE_GRACE)
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (!this.contextLost) return
+            if (document.hidden) window.clearTimeout(graceTimer)
+            else startGrace()
+        })
+
+        this.canvas.addEventListener('webglcontextlost', (event) => {
+            // Three.js calls this too, but the browser only attempts a restore
+            // if a handler cancels the event — so it is stated here rather than
+            // depending on the internals of another library's listener.
+            event.preventDefault()
+
+            this.contextLost = true
+            // Stop the clock as well as the loop. Left running, `Time` would
+            // hand the first restored frame a delta covering the entire outage.
+            this.time.stop()
+            this.contextNotice.show()
+            startGrace()
+        })
+
+        this.canvas.addEventListener('webglcontextrestored', () => {
+            // A restore can arrive after we have already given up on it, or
+            // after the visitor took the skip link. Both have handed the page
+            // to the text version and removed this canvas, so resuming here
+            // would run the render loop against a canvas that is no longer in
+            // the document — invisibly, and forever.
+            if (this.stopped) return
+
+            window.clearTimeout(graceTimer)
+            this.contextLost = false
+            this.contextNotice.hide()
+            this.time.play()
+        })
+    }
+
     private setDebug(): void {
         if (!this.config.debug) return
 
@@ -216,6 +316,22 @@ export default class Application {
             renderer: this.renderer,
             quality: this.quality,
         })
+
+        // A lost context cannot be provoked by hand, and the recovery path is
+        // otherwise only reachable by genuinely running a device out of
+        // memory. `WEBGL_lose_context` exists to fake exactly this.
+        const folder = this.debug?.addFolder('context loss')
+        if (folder) {
+            const lose = this.renderer.getContext().getExtension('WEBGL_lose_context')
+            const actions = {
+                lose: () => lose?.loseContext(),
+                // The browser will not restore a context in the same task that
+                // lost one, so this is a separate button rather than a timeout
+                restore: () => lose?.restoreContext(),
+            }
+            folder.add(actions, 'lose').name('lose context')
+            folder.add(actions, 'restore').name('restore context')
+        }
     }
 
     private setRenderer(): void {
@@ -352,8 +468,16 @@ export default class Application {
         })
     }
 
-    /** Halt the render loop — used when handing over to the text version. */
+    /**
+     * Halt the render loop — used when handing over to the text version.
+     *
+     * One way only. Nothing restarts an application after this, and the flag
+     * exists so that a late event cannot: see the `webglcontextrestored`
+     * handler, which would otherwise resume a torn-down page.
+     */
     stop(): void {
+        this.stopped = true
+        this.contextNotice.hide()
         this.time.stop()
     }
 }

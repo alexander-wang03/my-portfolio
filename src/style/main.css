@@ -823,3 +823,48 @@ html:not(.has-js) .skip-link {
         font-size: 10px;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Lost WebGL context
+
+   Sits above the loading screen (z-index 100) because the context can be lost
+   while that is still up, and a message about the page being stuck is useless
+   underneath the thing it is stuck on.
+
+   The scrim is translucent rather than opaque: the canvas still shows the last
+   frame it drew, and letting it through is what makes "paused" read as paused
+   rather than as a crash.
+--------------------------------------------------------------------------- */
+.context-notice {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 24px;
+    text-align: center;
+    background: rgba(10, 5, 4, 0.82);
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* Nothing in here is interactive, so let clicks reach whatever is beneath */
+    pointer-events: none;
+}
+
+.context-notice-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.context-notice-body {
+    margin: 0;
+    max-width: 34ch;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    opacity: 0.75;
+}
