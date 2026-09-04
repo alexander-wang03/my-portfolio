@@ -77,7 +77,7 @@ html:not(.has-js) .skip-link {
 
 .fallback .tagline {
     margin-top: 0.5rem;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.55);
     letter-spacing: 0.08em;
 }
 
@@ -130,7 +130,7 @@ html:not(.has-js) .skip-link {
 .fallback footer {
     margin-top: 4rem;
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.55);
 }
 
 .js-canvas {
@@ -159,13 +159,39 @@ html:not(.has-js) .skip-link {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 0.68rem;
     line-height: 1.5;
-    color: rgba(255, 255, 255, 0.28);
+    color: rgba(255, 255, 255, 0.82);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     user-select: none;
     -webkit-user-select: none;
 }
 
+/* The scrim is what makes this readable, and it is not optional.
+ *
+ * These sit directly on the terrain, which is a light peach — measured at
+ * rgb(247,180,145) behind this line. Light text on it scored 1.18:1 against
+ * the 4.5:1 that WCAG AA asks for, and no amount of alpha could fix that:
+ * pure white at full opacity only reaches 1.77:1, because the world is
+ * brighter than the text. A text-shadow does not count either.
+ *
+ * 0.72 is dark enough to hold 4.5:1 even against a pure white backdrop, so
+ * it cannot be defeated by a bright patch of terrain drifting underneath.
+ * It is also what `.perf-monitor` already uses.
+ *
+ * This is a licence matter as much as an accessibility one — CC BY wants the
+ * attribution to travel with the work, and attribution nobody can read is not
+ * really attribution.
+ */
+.credits-text,
+.credits-tag {
+    background: rgba(0, 0, 0, 0.72);
+    padding: 4px 9px;
+    border-radius: 5px;
+}
+
 .credits-text {
+    /* Inline by default, which ignores vertical padding — so the scrim would
+       be a strip the wrong height */
+    display: inline-block;
     transition: opacity 0.5s ease;
 }
 
@@ -179,9 +205,9 @@ html:not(.has-js) .skip-link {
    text that is already on screen */
 .credits-tag {
     display: none;
-    padding: 0;
+    /* No `padding: 0` here — this block comes after the scrim rule at equal
+       specificity, so it would win and collapse the scrim onto the glyphs */
     border: none;
-    background: none;
     font: inherit;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -194,7 +220,9 @@ html:not(.has-js) .skip-link {
 
 .credits-tag:hover,
 .credits-tag:focus-visible {
-    color: rgba(255, 144, 67, 0.9);
+    /* Lifted from #ff9043, which scores 4.10 against the scrim — close, but
+       under AA. This is the nearest tone to it that clears 4.5. */
+    color: #ffb27a;
 }
 
 /* Retired, not removed. CC BY and MIT both want the attribution to stay with
@@ -241,16 +269,16 @@ html:not(.has-js) .skip-link {
 
 .credits a {
     pointer-events: auto;
-    color: rgba(255, 255, 255, 0.45);
+    color: #fff;
     text-decoration: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.35);
     transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .credits a:hover,
 .credits a:focus {
-    color: rgba(255, 144, 67, 0.95);
-    border-bottom-color: rgba(255, 144, 67, 0.6);
+    color: #ffb27a;
+    border-bottom-color: rgba(255, 178, 122, 0.7);
 }
 
 /* Hidden until the world is actually on screen.
@@ -338,7 +366,7 @@ html:not(.has-js) .skip-link {
     font-weight: 400;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: rgba(212, 165, 116, 0.5);
+    color: rgba(212, 165, 116, 0.7);
     margin-bottom: 3em;
 }
 
@@ -389,7 +417,7 @@ html:not(.has-js) .skip-link {
     font-size: 0.8rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .loading-prompt:disabled {
@@ -595,9 +623,11 @@ html:not(.has-js) .skip-link {
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.45);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    /* Dark, for the same reason as the credits: a light wash over light
+       terrain left the 9px labels at 1.28:1. See the note above `.credits-text`. */
+    background: rgba(0, 0, 0, 0.72);
+    color: rgba(255, 255, 255, 0.82);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -618,13 +648,15 @@ html:not(.has-js) .skip-link {
 }
 
 .touch-boost.active {
-    background: rgba(255, 144, 67, 0.35);
+    background-color: rgba(0, 0, 0, 0.72);
+    background-image: linear-gradient(rgba(255, 144, 67, 0.45), rgba(255, 144, 67, 0.45));
     border-color: #ff9043;
     box-shadow: 0 0 18px rgba(255, 144, 67, 0.55);
 }
 
 .touch-brake.active {
-    background: rgba(255, 107, 94, 0.32);
+    background-color: rgba(0, 0, 0, 0.72);
+    background-image: linear-gradient(rgba(255, 107, 94, 0.42), rgba(255, 107, 94, 0.42));
     border-color: #ff6b5e;
     box-shadow: 0 0 18px rgba(255, 107, 94, 0.5);
 }
@@ -658,13 +690,15 @@ html:not(.has-js) .skip-link {
 }
 
 .touch-horn.active {
-    background: rgba(255, 255, 255, 0.3);
+    background-color: rgba(0, 0, 0, 0.72);
+    background-image: linear-gradient(rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.22));
     border-color: rgba(255, 255, 255, 0.6);
 }
 
 .touch-reset.active {
     opacity: 1;
-    background: rgba(255, 255, 255, 0.3);
+    background-color: rgba(0, 0, 0, 0.72);
+    background-image: linear-gradient(rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.22));
 }
 
 /* ── Responsive: smaller controls on small screens ─────────────────── */
