@@ -5,13 +5,7 @@ import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
 import { createMatcapMaterial } from '../Materials/Matcap'
-import {
-    BOARD_BACKGROUND,
-    BOARD_FONT,
-    createBoardMaterial,
-    createCanvasTexture,
-    fillWrappedText,
-} from '../Materials/SignBoard'
+import { BOARD_BACKGROUND, BOARD_FONT, createBoardMesh, createCanvasTexture, fillWrappedText } from '../Materials/SignBoard'
 import { ABOUT } from '../../content/portfolio'
 
 export interface AboutSectionOptions {
@@ -70,10 +64,7 @@ export default class AboutSection {
             ctx.fillText(ABOUT.subtitle, 256, 150)
         })
 
-        const board = new THREE.Mesh(
-            new THREE.PlaneGeometry(boardWidth, boardHeight),
-            createBoardMaterial(texture),
-        )
+        const board = createBoardMesh(boardWidth, boardHeight, texture)
         board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05
 
         const signGroup = new THREE.Group()

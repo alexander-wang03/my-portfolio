@@ -8,6 +8,12 @@ const MAX_PARTICLES = 200
 const PARTICLE_LIFETIME = 2.5 // seconds
 const EMIT_RATE = 3 // particles per wheel per frame (when moving)
 
+/** Particles in a collision puff, scaled by the impact's 0-1 strength. */
+const BURST_MIN = 6
+const BURST_MAX = 22
+/** How much harder a collision throws its dust than a rolling wheel does. */
+const BURST_SPREAD = 3.5
+
 export default class DustParticles {
     time: Time
     physics: Physics
@@ -58,7 +64,29 @@ export default class DustParticles {
         this.setTick()
     }
 
-    private emit(worldPos: THREE.Vector3): void {
+    /**
+     * A one-off puff at a collision, rather than the steady trickle the wheels
+     * leave behind.
+     *
+     * Shares the same particle pool as the driving dust on purpose. A separate
+     * pool would double the buffers and the draw call to show the same thing;
+     * the pool recycles oldest-first, so a hard knock briefly crowds out some
+     * wheel dust and then the trail refills — which is the right priority.
+     */
+    burst(worldPos: THREE.Vector3, strength: number): void {
+        const count = Math.round(BURST_MIN + (BURST_MAX - BURST_MIN) * strength)
+
+        for (let i = 0; i < count; i++) {
+            this.emit(worldPos, BURST_SPREAD * (0.5 + strength))
+        }
+    }
+
+    /**
+     * `spread` scales how far the particle is thrown. The wheels pass nothing
+     * and get the gentle default; a collision pushes it up so the puff reads
+     * as knocked loose rather than drifting.
+     */
+    private emit(worldPos: THREE.Vector3, spread = 1): void {
         const i = this.nextSlot
         this.nextSlot = (this.nextSlot + 1) % MAX_PARTICLES
 
@@ -70,9 +98,9 @@ export default class DustParticles {
         this.positions[i3 + 2] = worldPos.z + (Math.random() - 0.5) * 0.3
 
         // Velocity: mostly upward (low gravity moon), slight random spread
-        this.velocities[i3] = (Math.random() - 0.5) * 0.4
-        this.velocities[i3 + 1] = 0.15 + Math.random() * 0.25 // slow rise
-        this.velocities[i3 + 2] = (Math.random() - 0.5) * 0.4
+        this.velocities[i3] = (Math.random() - 0.5) * 0.4 * spread
+        this.velocities[i3 + 1] = (0.15 + Math.random() * 0.25) * spread // slow rise
+        this.velocities[i3 + 2] = (Math.random() - 0.5) * 0.4 * spread
 
         this.ages[i] = 0
         this.maxAges[i] = PARTICLE_LIFETIME * (0.7 + Math.random() * 0.6)

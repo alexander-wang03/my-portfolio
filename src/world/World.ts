@@ -10,11 +10,12 @@ import { setRevealFade, setRevealProgress } from './Reveal'
 import Terrain from './Terrain'
 import Environment from './Environment'
 import Controls from './Controls'
-import Physics from './Physics'
+import Physics, { type ImpactMaterial } from './Physics'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import Rover, { ROVER_MODEL } from './Rover'
 import DustParticles from './Particles/DustParticles'
 import AmbientDust from './Particles/AmbientDust'
+import Signpost from './Sections/Signpost'
 import Zones from './Zones'
 import Areas from './Areas'
 import Router from './Router'
@@ -424,6 +425,30 @@ export default class World {
         })
         this.container.add(about.container)
 
+        // Wayfinding, built last because it needs the four positions above.
+        //
+        // The spot is not arbitrary. At 25 units out no section is on screen
+        // from spawn, and in portrait the horizontal field of view is only
+        // about 19 degrees — so anything much off the camera's axis is not
+        // merely small, it is absent. This sits within that cone at every zoom
+        // level, stays clear of the instruction panel in front of spawn and
+        // the block letters behind it, and — the constraint that decided it —
+        // is off the camera's sight line to the name, so it never stands in
+        // front of a letter.
+        const signpost = new Signpost({
+            terrain: this.terrain,
+            shadows: this.shadows,
+            x: -5,
+            z: -3,
+            destinations: [
+                { label: 'Projects', x: 25, z: 0 },
+                { label: 'Contact', x: 0, z: 25 },
+                { label: 'About', x: -25, z: 0 },
+                { label: 'Experience', x: 0, z: -25 },
+            ],
+        })
+        this.container.add(signpost.container)
+
         // Contact section — north (past intro sign)
         const contact = new ContactSection({
             zones: this.zones,
@@ -464,6 +489,17 @@ export default class World {
             physics: this.physics,
         })
         this.container.add(this.dust.container)
+
+        // The same events that pick the collision sounds, so a knock you can
+        // hear is a knock you can see. Terrain is left out: the wheels already
+        // trail dust continuously, and puffing again on every bump over rough
+        // ground turned the trail into a smokescreen.
+        this.physics.on('impact', (...args: unknown[]) => {
+            const material = args[1] as ImpactMaterial
+            if (material === 'terrain') return
+
+            this.dust.burst(args[2] as THREE.Vector3, args[0] as number)
+        })
     }
 
     private setAmbientDust(): void {
@@ -481,6 +517,13 @@ export default class World {
         })
 
         this.areas.on('interact', () => this.sounds.play('ui'))
+
+        // Arriving somewhere should be audible. Zones already know when the
+        // rover crosses in, and were only driving the URL and the tab title.
+        for (const zone of this.zones.items) {
+            if (typeof zone.data.section !== 'string') continue
+            zone.on('in', () => this.sounds.playArrival())
+        }
 
         this.controls.on('action', (...args: unknown[]) => {
             if (args[0] === 'horn') this.sounds.playHorn()

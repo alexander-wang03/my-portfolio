@@ -817,8 +817,48 @@ export default class Physics extends EventEmitter {
             // cannot start the cooldown and mask a real hit behind it
             if (!this.claimPairImpact(first, second, tuning.cooldown)) return
 
-            this.trigger('impact', [strength, material])
+            this.trigger('impact', [strength, material, this.impactPointFor(first, second)])
         })
+    }
+
+    /**
+     * Roughly where a contact happened, for anything that wants to draw there.
+     *
+     * Rapier's contact-force event carries no position — only the pair and the
+     * force — so this approximates one from the colliders themselves.
+     *
+     * The terrain is deliberately excluded rather than averaged in. Its
+     * collider is the entire 200-unit heightfield centred on the origin, so
+     * the midpoint of "rover and terrain" is a point halfway to the middle of
+     * the map, which is nowhere near the wheel that hit it. For everything
+     * else both bodies are compact enough that their midpoint sits inside the
+     * contact.
+     */
+    private impactPointFor(first: number, second: number): THREE.Vector3 {
+        const firstIsTerrain = this.impactMaterials.get(first) === 'terrain'
+        const secondIsTerrain = this.impactMaterials.get(second) === 'terrain'
+
+        const a = firstIsTerrain ? null : this.world.colliders.get(first)
+        const b = secondIsTerrain ? null : this.world.colliders.get(second)
+
+        if (a && b) {
+            const pa = a.translation()
+            const pb = b.translation()
+            return new THREE.Vector3(
+                (pa.x + pb.x) / 2,
+                (pa.y + pb.y) / 2,
+                (pa.z + pb.z) / 2,
+            )
+        }
+
+        const only = a ?? b
+        if (only) {
+            const p = only.translation()
+            return new THREE.Vector3(p.x, p.y, p.z)
+        }
+
+        // Both sides were terrain, or both handles have gone stale
+        return this.chassisPosition.clone()
     }
 
     /**

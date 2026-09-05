@@ -7,12 +7,7 @@ import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
 import { createMatcapMaterial, type MatcapName } from '../Materials/Matcap'
-import {
-    BOARD_BACKGROUND,
-    BOARD_FONT,
-    createBoardMaterial,
-    createCanvasTexture,
-} from '../Materials/SignBoard'
+import { BOARD_BACKGROUND, BOARD_FONT, createBoardMesh, createCanvasTexture } from '../Materials/SignBoard'
 import { EXPERIENCES, RESUME_URL } from '../../content/portfolio'
 
 export interface ExperienceSectionOptions {
@@ -76,10 +71,7 @@ export default class ExperienceSection {
                 ctx.fillText(exp.years, 256, 70)
             })
 
-            const board = new THREE.Mesh(
-                new THREE.PlaneGeometry(boardWidth, boardHeight),
-                createBoardMaterial(labelTexture),
-            )
+            const board = createBoardMesh(boardWidth, boardHeight, labelTexture)
             board.position.y = pillarHeight / 2 + boardHeight / 2 + 0.05
 
             const signGroup = new THREE.Group()

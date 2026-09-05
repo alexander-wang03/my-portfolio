@@ -143,6 +143,43 @@ const ENGINE = {
 }
 
 /** One-shot cues, keyed by name. Fixed level, one take, no strength. */
+/**
+ * Wind gusts.
+ *
+ * The ambience was a fixed-gain noise bed, which the ear stops hearing as
+ * weather within a few seconds and starts hearing as hiss — the give-away is
+ * that it never changes. Two oscillators breathe it instead.
+ *
+ * `fastRate` is `slowRate * PI` rather than a second round number: an
+ * irrational ratio means the two never come back into phase, so the pattern
+ * has no period to notice. With a round ratio the whole thing audibly repeats
+ * on the lowest common multiple.
+ *
+ * Gain and filter frequency move together because that is what a real gust
+ * does — it gets louder and brighter at once. Moving gain alone reads as
+ * someone turning a volume knob.
+ */
+const WIND = {
+    base: 0.012,
+    range: 0.022,
+    slowRate: 0.13,
+    filterBase: 300,
+    filterRange: 130,
+}
+
+/**
+ * The section-arrival chime, built from the area cue.
+ *
+ * A perfect fifth down (2/3) rather than an arbitrary rate: the two sounds
+ * are then in a consonant interval instead of merely different, which is what
+ * stops the pair sounding like a mistake when both fire close together.
+ */
+const ARRIVAL = {
+    rate: 2 / 3,
+    volume: 0.55,
+    cooldown: 1200,
+}
+
 const CUES = {
     reveal: '/sounds/reveal/reveal-1.mp3',
     ui: '/sounds/ui/area-1.mp3',
@@ -189,11 +226,15 @@ export default class Sounds extends EventEmitter {
     ambience = 0
     private windSource: AudioBufferSourceNode | null = null
     private windGain: GainNode | null = null
+    private windFilter: BiquadFilterNode | null = null
     muted = false
     private started = false
     private lastImpactAt = 0
     private lastScreechAt = 0
     private lastHornAt = 0
+    private lastArrivalAt = 0
+    /** Radians of phase through the two gust oscillators. */
+    private gustPhase = 0
     /** Loaded sample players, keyed by material. */
     private howls = new Map<SampleName, Howl[]>()
     private cues = new Map<keyof typeof CUES, Howl>()
@@ -270,14 +311,16 @@ export default class Sounds extends EventEmitter {
         }
 
         this.windGain = this.ctx.createGain()
-        this.windGain.gain.value = 0.02
+        this.windGain.gain.value = WIND.base
         this.windGain.connect(this.masterGain)
 
-        // Band-pass filter for wind character
+        // Band-pass filter for wind character. Kept on the instance so the
+        // gusts in `updateWind` can sweep it.
         const filter = this.ctx.createBiquadFilter()
         filter.type = 'bandpass'
-        filter.frequency.value = 300
+        filter.frequency.value = WIND.filterBase
         filter.Q.value = 0.5
+        this.windFilter = filter
 
         this.windSource = this.ctx.createBufferSource()
         this.windSource.buffer = buffer
@@ -398,6 +441,31 @@ export default class Sounds extends EventEmitter {
     }
 
     /**
+     * Arriving at a section.
+     *
+     * The same sample as the area cue, pitched down and quieter. A separate
+     * file would be better, and this is where to point it — but reusing what
+     * is already loaded keeps the download unchanged, and dropping a fifth
+     * makes the two read as related events at different weights rather than
+     * as the same blip fired twice.
+     *
+     * Rate-limited because a zone boundary is a line, not a wall: idling on
+     * top of one and drifting produces repeated crossings.
+     */
+    playArrival(): void {
+        if (this.muted) return
+        if (this.time.elapsed - this.lastArrivalAt < ARRIVAL.cooldown) return
+        this.lastArrivalAt = this.time.elapsed
+
+        const howl = this.cues.get('ui')
+        if (!howl) return
+
+        howl.rate(ARRIVAL.rate)
+        howl.volume(ARRIVAL.volume)
+        howl.play()
+    }
+
+    /**
      * The horn.
      *
      * Rate-limited here as well as at the key, since the key is not the only
@@ -435,6 +503,7 @@ export default class Sounds extends EventEmitter {
 
     private update(): void {
         this.updateScreech()
+        this.updateWind()
 
         if (!this.engine) return
 
@@ -462,6 +531,26 @@ export default class Sounds extends EventEmitter {
         this.engine.volume(lerp(ENGINE.volume, this.engineProgress) * this.ambience)
     }
 
+    /**
+     * Breathe the wind bed, so it reads as weather rather than as hiss.
+     *
+     * Scaled by `ambience` like the engine is, so the world fades in as one
+     * thing rather than opening on wind that is already at full strength.
+     */
+    private updateWind(): void {
+        if (!this.windGain || !this.windFilter) return
+
+        this.gustPhase += Math.min(this.time.delta / 1000, 1 / 30)
+
+        const slow = Math.sin(this.gustPhase * WIND.slowRate)
+        const fast = Math.sin(this.gustPhase * WIND.slowRate * Math.PI)
+        // Weighted so the slow swell leads and the faster one only textures it
+        const gust = (slow * 0.65 + fast * 0.35 + 1) / 2
+
+        this.windGain.gain.value = (WIND.base + WIND.range * gust) * this.ambience
+        this.windFilter.frequency.value = WIND.filterBase + WIND.filterRange * gust
+    }
+
     /** Start the looping engine. Howler unlocks itself on first interaction. */
     private startEngine(): void {
         if (this.engine) return
@@ -477,6 +566,10 @@ export default class Sounds extends EventEmitter {
         const howl = this.cues.get(cue)
         if (!howl) return
 
+        // Reset explicitly: `playArrival` pitches this same Howl down, and
+        // Howler keeps rate on the instance, so without this the area cue
+        // plays at whatever the last arrival left behind.
+        howl.rate(1)
         howl.volume(volume)
         howl.play()
     }

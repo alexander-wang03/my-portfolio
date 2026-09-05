@@ -6,7 +6,7 @@ import type Camera from '../../engine/Camera'
 import type SectionOverlay from '../../ui/SectionOverlay'
 import type Shadows from '../Shadows'
 import { createMatcapMaterial } from '../Materials/Matcap'
-import { BOARD_BACKGROUND, createBoardMaterial, createTextTexture } from '../Materials/SignBoard'
+import { BOARD_BACKGROUND, createBoardMesh, createTextTexture } from '../Materials/SignBoard'
 import { CONTACT_LINKS } from '../../content/portfolio'
 
 export interface ContactSectionOptions {
@@ -60,10 +60,7 @@ export default class ContactSection {
                 color: link.color,
                 bg: BOARD_BACKGROUND,
             })
-            const iconBoard = new THREE.Mesh(
-                new THREE.PlaneGeometry(1.2, 1.2),
-                createBoardMaterial(iconTex),
-            )
+            const iconBoard = createBoardMesh(1.2, 1.2, iconTex)
             iconBoard.position.y = pillarHeight / 2 + 0.65
 
             // Label board below icon (flat plane, double-sided)
@@ -72,10 +69,7 @@ export default class ContactSection {
                 color: '#ffffff',
                 bg: BOARD_BACKGROUND,
             })
-            const labelBoard = new THREE.Mesh(
-                new THREE.PlaneGeometry(1.8, 0.4),
-                createBoardMaterial(labelTex),
-            )
+            const labelBoard = createBoardMesh(1.8, 0.4, labelTex)
             labelBoard.position.y = pillarHeight / 2 + 0.05
 
             const signGroup = new THREE.Group()
