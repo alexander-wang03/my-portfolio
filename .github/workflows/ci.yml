@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push makes an in-flight run pointless — cancel it rather than pay for
+# an answer about a commit nobody will look at again.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Typecheck and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Node the site is developed against. Pinned to a major
+          # rather than left floating, so a new default on the runner cannot
+          # change the build without anyone choosing it.
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # `npm run build` is `tsc && vite build` — the same command Vercel runs,
+      # so a failure here is a failure that would have reached the deploy.
+      - name: Build
+        run: npm run build
+
+      # The SEO files are emitted by a Vite plugin rather than committed, so
+      # nothing else notices if that plugin stops running. Their absence is
+      # invisible in a normal build log.
+      - name: Check the generated files exist
+        run: |
+          set -e
+          for file in dist/index.html dist/sitemap.xml dist/robots.txt dist/site.webmanifest; do
+            test -s "$file" || { echo "missing or empty: $file"; exit 1; }
+          done
+          # Not the literal URL: that lives in content/portfolio.ts, and
+          # duplicating it here would just be a second place to forget.
+          grep -q '<link rel="canonical"' dist/index.html \
+            || { echo 'no canonical link in dist/index.html'; exit 1; }
+          echo "generated files OK"

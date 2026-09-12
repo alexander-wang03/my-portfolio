@@ -86,5 +86,18 @@
     </footer>
 
     <script type="module" src="./main.ts"></script>
+
+    <!-- Vercel Web Analytics.
+         Served from this site's own origin rather than a third-party domain,
+         so it is not a cross-site request and there is nothing for an
+         extension to block on that basis. It sets no cookies and does not
+         follow visitors between sites; what it counts is page views, referrer,
+         country and rough device class.
+         `defer` because it must never compete with the bundle for the network
+         during the load it is measuring. The path only exists on Vercel, so
+         locally and in `npm run preview` it 404s harmlessly and reports
+         nothing. Needs Analytics switched on for the project in the Vercel
+         dashboard, or it 404s in production too. -->
+    <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>

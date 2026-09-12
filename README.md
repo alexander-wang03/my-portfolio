@@ -104,6 +104,15 @@ A few things that are less obvious than they look:
     hashed filenames, so caching it is what would actually go stale.
   - `CV.pdf` is left on the default too — a résumé gets replaced, and it
     should be the new one the moment it is.
+- **CI runs the same command Vercel does** (`.github/workflows/ci.yml`), so a
+  typecheck failure surfaces on the commit rather than as a rejected deploy. It
+  also asserts the build-time SEO files were emitted — nothing else notices if
+  that Vite plugin stops running, since they are generated rather than
+  committed.
+- **Analytics is Vercel Web Analytics**, loaded from this site's own origin
+  rather than a third-party domain. No cookies, no cross-site tracking. It has
+  to be switched on for the project in the Vercel dashboard; until it is, the
+  script 404s and nothing is recorded.
 - `prefers-reduced-motion` is honoured throughout, and quality scales down on
   low-power devices.
 
