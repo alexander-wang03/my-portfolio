@@ -17,6 +17,44 @@ export interface Actions {
     boost: boolean
 }
 
+/**
+ * Whether to build the on-screen joystick and buttons.
+ *
+ * Asked as a negative on purpose: show them UNLESS the device has a pointer
+ * that is both fine and able to hover. That pair means a mouse or a trackpad,
+ * and nothing else does.
+ *
+ * The obvious phrasing, `(pointer: coarse)`, is what this replaced, and it is
+ * wrong in both directions. It used to be `'ontouchstart' in window ||
+ * navigator.maxTouchPoints > 0`, which is a question about the hardware rather
+ * than about the visitor and is true of every touchscreen laptop - those
+ * people drive with a keyboard and were getting a joystick parked over the
+ * world. (`setTouch` also calls `camera.pan.disable()`, but that costs nothing
+ * either way: `pan.enabled` starts false and `pan.enable()` is never called
+ * from anywhere, so camera panning has never been on.) But asking only for a
+ * coarse primary pointer has the opposite
+ * failure: a phone or tablet that reports a stylus as its primary pointer
+ * answers `(pointer: fine)` and would lose its controls entirely, with no way
+ * to drive at all.
+ *
+ * `hover` is the discriminator that holds in both cases. A finger and a stylus
+ * cannot hover; a mouse and a trackpad can.
+ *
+ *   phone / tablet          coarse, hover: none   -> shown
+ *   phone with a stylus     fine,   hover: none   -> shown
+ *   laptop, touchscreen     fine,   hover: hover  -> hidden
+ *   tablet with a mouse     fine,   hover: hover  -> hidden
+ *
+ * Read once, at construction. A visitor who docks or undocks a keyboard
+ * mid-session keeps whatever they started with until they reload, which is a
+ * fair trade for not making the whole control scheme swappable.
+ *
+ * `main.css` mirrors this exact query - keep the two in step.
+ */
+function wantsTouchControls(): boolean {
+    return !(window.matchMedia?.('(pointer: fine) and (hover: hover)').matches ?? false)
+}
+
 export default class Controls extends EventEmitter {
     config: ControlsOptions['config']
     camera: Camera
@@ -59,7 +97,7 @@ export default class Controls extends EventEmitter {
         this.setKeyboard()
         this.setVisibilityReset()
 
-        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        if (wantsTouchControls()) {
             this.hasTouchControls = true
             this.setTouch()
         }
@@ -199,9 +237,45 @@ export default class Controls extends EventEmitter {
 
         // --- Joystick touch handling ---
         let joystickTouchId: number | null = null
-        const center = { x: 0, y: 0 }
-        const maxRadius = 50
-        const deadzone = 0.25
+
+        /**
+         * Where the stick is and how far it throws, in viewport pixels.
+         *
+         * Measured rather than assumed, and re-measured on every move rather
+         * than once per touch. The element moves while a thumb is on it: the
+         * credits bar publishes `--credits-clearance`, the controls lift clear
+         * of it, and that can happen mid-drag — at the 7s handover, or on a
+         * rotation, or when the font finishes loading and the line reflows.
+         *
+         * With the centre cached from touchstart, any such shift is read as
+         * the thumb having moved that far instead. An 80px lift against a
+         * throw of ~40px pegs the stick to full deflection in a direction
+         * nobody pushed, and it stays there until the finger lifts.
+         *
+         * One `getBoundingClientRect` per touchmove, on one element.
+         */
+        const stick = { x: 0, y: 0, maxRadius: 1 }
+
+        const measureStick = (): void => {
+            const rect = base.getBoundingClientRect()
+            stick.x = rect.left + rect.width / 2
+            stick.y = rect.top + rect.height / 2
+            // Derived, never hardcoded. This was a literal 50 while the base
+            // was sized in CSS, so the two could disagree — and did: the knob
+            // travelled past the ring and sat on bare terrain. The throw is
+            // whatever leaves the knob flush inside the ring.
+            stick.maxRadius = Math.max(1, rect.width / 2 - knob.offsetWidth / 2)
+        }
+
+        /**
+         * Dead zone as a distance, not a fraction.
+         *
+         * A fraction of the throw means the dead zone shrinks with the stick,
+         * so the smaller landscape joystick would be twitchier than the
+         * portrait one for no reason a thumb can perceive. Roughly the
+         * diameter of a resting fingertip's wobble.
+         */
+        const DEAD_RADIUS = 12
 
         joystick.addEventListener('touchstart', (e) => {
             if (!this.enabled) return
@@ -209,9 +283,7 @@ export default class Controls extends EventEmitter {
             e.stopPropagation()
             const touch = e.changedTouches[0]
             joystickTouchId = touch.identifier
-            const rect = base.getBoundingClientRect()
-            center.x = rect.left + rect.width / 2
-            center.y = rect.top + rect.height / 2
+            measureStick()
         }, { passive: false })
 
         const onJoystickMove = (e: TouchEvent) => {
@@ -221,22 +293,30 @@ export default class Controls extends EventEmitter {
                 if (touch.identifier !== joystickTouchId) continue
 
                 e.preventDefault()
-                let dx = touch.clientX - center.x
-                let dy = touch.clientY - center.y
+
+                // Re-read before every sample: see `measureStick`
+                measureStick()
+
+                let dx = touch.clientX - stick.x
+                let dy = touch.clientY - stick.y
 
                 const dist = Math.sqrt(dx * dx + dy * dy)
-                if (dist > maxRadius) {
-                    dx = (dx / dist) * maxRadius
-                    dy = (dy / dist) * maxRadius
+                if (dist > stick.maxRadius) {
+                    dx = (dx / dist) * stick.maxRadius
+                    dy = (dy / dist) * stick.maxRadius
                 }
 
                 knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`
 
-                const nx = dx / maxRadius
-                const ny = dy / maxRadius
+                const nx = dx / stick.maxRadius
+                const ny = dy / stick.maxRadius
                 const deflection = Math.min(Math.sqrt(nx * nx + ny * ny), 1)
 
-                if (deflection < deadzone) {
+                // Capped: `deflection` can never exceed 1, so an unbounded
+                // ratio would make the whole stick dead rather than just its
+                // centre if the ring ever measured smaller than DEAD_RADIUS -
+                // which is what a hidden or not-yet-laid-out element reports.
+                if (deflection < Math.min(0.6, DEAD_RADIUS / stick.maxRadius)) {
                     this.desiredHeading = null
                     this.stickThrottle = 0
                     this.actions.up = false

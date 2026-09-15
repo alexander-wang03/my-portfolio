@@ -159,7 +159,9 @@ html:not(.has-js) .skip-link {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 0.68rem;
     line-height: 1.5;
-    color: rgba(255, 255, 255, 0.82);
+    /* Warm, like the rest of the HUD. 4.74:1 on the scrim below, against the
+       4.5:1 this size needs. */
+    color: #f5aa58;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     user-select: none;
     -webkit-user-select: none;
@@ -269,9 +271,11 @@ html:not(.has-js) .skip-link {
 
 .credits a {
     pointer-events: auto;
-    color: #fff;
+    /* Brighter than the surrounding line, which is what marks them as links -
+       the same relationship the section panels use. */
+    color: #fccf92;
     text-decoration: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+    border-bottom: 1px solid rgba(252, 207, 146, 0.45);
     transition: color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -555,16 +559,19 @@ html:not(.has-js) .skip-link {
         right: 0;
     }
 
-    /* Reset moves off the top-left corner, which the sheet now occupies, to
-       just above the joystick */
-    .touch-reset {
-        top: auto;
-        bottom: 176px;
-        left: 40px;
-    }
-    /* Narrow enough to stay in the gap between the joystick and the buttons */
+    /* Full width, and the controls move instead.
+     *
+     * This used to be `calc(100vw - 220px)` — about 170px on a 390px phone —
+     * to squeeze between the joystick and the buttons. The attribution is 142
+     * characters, so at that width it wrapped to five lines and became a
+     * 77px-tall block sitting on top of both of them. Widening it to 92vw
+     * takes the same text to two lines and roughly 37px.
+     *
+     * Dodging sideways was the wrong solution to begin with: the bottom edge
+     * belongs to the controls, so the credits now take the width they need and
+     * the controls lift over them via `--credits-clearance`. */
     .credits {
-        max-width: calc(100vw - 220px);
+        max-width: min(92vw, 640px);
         font-size: 0.6rem;
         line-height: 1.4;
     }
@@ -576,61 +583,166 @@ html:not(.has-js) .skip-link {
     margin-bottom: 4px !important;
 }
 
-/* ── Touch Controls ────────────────────────────────────────────────── */
+/* -- Touch Controls ------------------------------------------------------
+
+   One rule governs every surface here: DARK INK OWNS THE OUTER PIXEL, and
+   every light or coloured detail lives inside it.
+
+   That is not a style preference, it is the only thing that works. These
+   controls float over a procedural world with no fixed backdrop - bright peach
+   terrain rgb(247,180,145), shadowed rock around rgb(90,55,40), and the near
+   black sky. No single colour contrasts against all three: sweeping every
+   background luminance from 0 to 255, an opaque #17100C boundary on its own
+   bottoms out at 1.00:1, and so does a white one.
+
+   A dark ring PAIRED with a light inner keyline does hold. Whichever of the
+   two the background is closer to, the other one shows: the floor across the
+   whole sweep is 3.62:1, against the 3:1 WCAG 1.4.11 asks for non-text
+   contrast. The previous joystick - a white 0.06 fill with a white 0.15
+   border - measured 1.04:1, which is why it was invisible on Mars.
+
+   The light half is warm, not white. #fccf92 and #f5aa58 are the two tones the
+   section panels already use, so the HUD belongs to the same world rather than
+   looking like browser chrome dropped on top of it. The pale #fccf92 is the
+   one doing the contrast work - it is the hairline that has to beat dark
+   terrain, and at 3.62:1 it keeps a real margin where the deeper #f5aa58 would
+   scrape by at 3.13:1. #f5aa58 carries the labels and the knob, where it is
+   read against the dark face rather than against the world, and scores 4.74:1.
+   The two warmer tones in the palette, #d4a574 and #ff9043, fail outright at
+   2.91:1 and 2.90:1 - they are panel colours, read against a fixed dark card,
+   and they do not survive being put over open terrain.
+   ---------------------------------------------------------------------- */
 
 .touch-controls {
     position: fixed;
     inset: 0;
     pointer-events: none;
     z-index: 10;
+
+    --hud-ink: #17100C;                         /* outer boundary, opaque */
+    --hud-face: rgba(0, 0, 0, 0.72);            /* button fill */
+    --hud-glass: rgba(0, 0, 0, 0.5);            /* joystick fill, 3.49:1 on peach */
+    --hud-keyline: #fccf92;                     /* the inner light line */
+    --hud-label: #f5aa58;                       /* labels and the knob */
+
+    /* How far the driving cluster stands off the bottom edge, and how far it
+       gets out of the way when the credits are expanded underneath it.
+
+       Credits.ts publishes --credits-clearance as the distance from the bottom
+       of the viewport to the top of the credits line, plus a gap. Subtracting
+       the resting offset leaves exactly the overlap and no more, so the
+       controls rise by the amount they are actually in the way - and not at
+       all once the line retires.
+
+       Taking the overflow past the LOWEST control and applying it to all of
+       them keeps the cluster rigid. Letting each control take its own
+       max(rest, clearance) would shear the group apart, moving the low buttons
+       while the high one stayed, and the distance between boost and brake is
+       exactly what a thumb memorises. */
+    --rest: 44px;
+    --lift: max(0px, calc(var(--credits-clearance, 0px) - var(--rest)));
 }
+
+/* Belt and braces with wantsTouchControls() in Controls.ts - same query.
+
+ * Both halves must agree, and both must ask for a fine pointer AND hover.
+ * `(pointer: fine)` alone would hide the controls on a phone or tablet whose
+ * primary pointer is a stylus, leaving it with no way to drive.
+ *
+ * That check decides whether these are built at all, and is the one that
+ * matters - it also governs whether camera panning stays enabled. This covers
+ * the case where a device reports a coarse primary pointer at load and a fine
+ * one later, which is a docked tablet: the controls exist but are no longer
+ * the right input, and a joystick parked over the world is worse than nothing.
+ */
+@media (pointer: fine) and (hover: hover) {
+    .touch-controls {
+        display: none;
+    }
+}
+
+/* Only the BUTTONS lift. The joystick never moves, and that is the whole point.
+ *
+ * A button that slides under a thumb is harmless - it is a discrete press, and
+ * it either happens or it does not. A joystick is a continuous reading of where
+ * a thumb sits RELATIVE TO ITS CENTRE, so moving it under a stationary thumb is
+ * indistinguishable from the thumb having moved. In landscape the lift is 31px
+ * against a 38px throw: the rover would take off at 80% deflection in a
+ * direction nobody pushed, and keep going until the finger lifted.
+ *
+ * Re-measuring the centre on every touchmove, which this file's earlier
+ * revision relied on, does not save it. That makes the reading HONEST - the
+ * thumb really is further from the centre now - but honest is not the same as
+ * correct, and the rover still drives off. The only fix is for the stick to
+ * stay put, so its resting position is set clear of the credits instead.
+ *
+ * translate rather than transform, so the lift composes with
+ * .touch-btn.active { transform: scale(0.93) } instead of clobbering it, and
+ * stays on the compositor.
+ *
+ * Reset is absent for a different reason: it is parked away from the bottom
+ * edge, so the credits never reach it. */
+.touch-boost,
+.touch-brake,
+.touch-horn {
+    translate: 0 calc(-1 * var(--lift));
+}
+
+/* -- Joystick -----------------------------------------------------------
+   The element is a padded HALO. touchstart binds to .touch-joystick while the
+   centre and throw are measured from .touch-joystick-base, so the padding buys
+   a larger catch area without moving the stick's origin or its range. */
 
 .touch-joystick {
     position: absolute;
-    bottom: 40px;
-    left: 40px;
-    width: 120px;
-    height: 120px;
     pointer-events: auto;
     touch-action: none;
+    padding: 14px;
+    /* The halo is the element touchstart binds to, so its SHAPE is its catch
+       area. Left square, the corners reach ~30px further out than the ring
+       they surround, and on a narrow phone the bottom-right corner swallows
+       presses aimed at the horn beside it. */
+    border-radius: 50%;
 }
 
 .touch-joystick-base {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.06);
-    border: 2px solid rgba(255, 255, 255, 0.15);
     position: relative;
+    background: var(--hud-glass);
+    border: 3px solid var(--hud-ink);
+    box-shadow: inset 0 0 0 2px var(--hud-keyline);
 }
 
 .touch-joystick-knob {
-    width: 44px;
-    height: 44px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.35);
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    background: var(--hud-label);
+    /* Load-bearing, not trim. At full deflection the knob sits against the
+       ring, and its fill alone is only 2.04:1 against the glass - the dark
+       edge is what the knob is actually seen by, at 9.65:1, exactly when the
+       stick's reading matters most. */
+    border: 2px solid var(--hud-ink);
 }
+
+/* -- Buttons ----------------------------------------------------------- */
 
 .touch-btn {
     position: absolute;
     pointer-events: auto;
     touch-action: none;
-    width: 64px;
-    height: 64px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    /* Dark, for the same reason as the credits: a light wash over light
-       terrain left the 9px labels at 1.28:1. See the note above `.credits-text`. */
-    background: rgba(0, 0, 0, 0.72);
-    color: rgba(255, 255, 255, 0.82);
-    font-size: 9px;
+    background: var(--hud-face);
+    border: 2px solid var(--hud-ink);
+    box-shadow: inset 0 0 0 1.5px var(--hud-keyline);
+    color: var(--hud-label);
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     display: flex;
@@ -638,104 +750,328 @@ html:not(.has-js) .skip-link {
     justify-content: center;
     outline: none;
     -webkit-tap-highlight-color: transparent;
-    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
-        box-shadow 0.12s ease, transform 0.12s ease;
+    /* One declaration: a second transition on any selector that also matches
+       replaces this whole list rather than adding to it. */
+    transition: translate 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+/* Hit slop - target larger than the ink.
+ *
+ * A thumb aims at a 68px circle and is forgiven 8px in every direction. The
+ * gaps between controls were chosen to survive this: the tightest pair, boost
+ * and brake, keeps 38px of clear paint, so even with both targets grown there
+ * are 22px of genuine dead space between them and neither can steal the
+ * other's press. */
+.touch-btn::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
 }
 
 .touch-btn.active {
-    color: #fff;
     transform: scale(0.93);
+    /* Brighter than the resting label, not whiter - the pressed state steps up
+       the same hue rather than changing to a different colour. */
+    color: var(--hud-keyline);
 }
 
+/* Accents go INSIDE the dark edge, never on it.
+ *
+ * #ff9043 against peach terrain is 1.28:1 and #ff6b5e is 1.58:1 - painted on
+ * the outer border, as they were, the lit state was HARDER to see than the
+ * unlit one. Inside, against the scrim, they are 5.33:1 and 4.30:1.
+ *
+ * Those two are also only 1.24:1 apart from each other, so colour alone cannot
+ * tell boost from brake. It never has to: they differ in label, in size and in
+ * position, and the colour is the least of the four cues. */
 .touch-boost.active {
-    background-color: rgba(0, 0, 0, 0.72);
-    background-image: linear-gradient(rgba(255, 144, 67, 0.45), rgba(255, 144, 67, 0.45));
-    border-color: #ff9043;
-    box-shadow: 0 0 18px rgba(255, 144, 67, 0.55);
+    box-shadow: inset 0 0 0 3px #ff9043, 0 0 18px rgba(255, 144, 67, 0.55);
 }
 
 .touch-brake.active {
-    background-color: rgba(0, 0, 0, 0.72);
-    background-image: linear-gradient(rgba(255, 107, 94, 0.42), rgba(255, 107, 94, 0.42));
-    border-color: #ff6b5e;
-    box-shadow: 0 0 18px rgba(255, 107, 94, 0.5);
+    box-shadow: inset 0 0 0 3px #ff6b5e, 0 0 18px rgba(255, 107, 94, 0.5);
+}
+
+.touch-horn.active,
+.touch-reset.active {
+    box-shadow: inset 0 0 0 3px var(--hud-keyline);
+}
+
+/* -- Resting layout -----------------------------------------------------
+
+   These are the sizes and positions for a large touch screen - a tablet, which
+   matches neither the portrait-phone nor the landscape breakpoint below. They
+   are NOT a fallback nobody sees: without them a tablet gets buttons with no
+   width and a joystick with no size at all.
+
+   The arrangement is the same one the phone breakpoints use, just roomier:
+   joystick on the left for the steering thumb, brake largest and lowest in the
+   right corner, boost up and inward on the same arc, horn in the channel
+   between the two where a thumb sliding off the stick lands. */
+
+/* Parked above the credits rather than lifted over them - see the note on the
+   lift above. The expanded attribution reaches ~57px up from the bottom edge
+   at this width, so 62px clears it without moving. */
+.touch-joystick {
+    left: 24px;
+    bottom: 62px;
+    width: 176px;
+    height: 176px;
+}
+
+.touch-joystick-knob {
+    width: 56px;
+    height: 56px;
+}
+
+.touch-btn {
+    width: 72px;
+    height: 72px;
 }
 
 .touch-brake {
-    bottom: 40px;
-    right: 40px;
+    right: 28px;
+    bottom: 44px;
+    width: 80px;
+    height: 80px;
+    font-size: 11px;
 }
 
 .touch-boost {
-    bottom: 120px;
-    right: 40px;
+    right: 116px;
+    bottom: 136px;
 }
 
-/* Beside the brake rather than stacked above the boost: a third button in that
-   column puts it where the thumb rests between inputs. */
 .touch-horn {
-    bottom: 40px;
-    right: 120px;
+    right: 172px;
+    bottom: 44px;
+    width: 58px;
+    height: 58px;
 }
 
-/* Top left, deliberately far from every driving control and from the section
-   panel that slides in on the right. It teleports the rover, so a stray thumb
-   reaching it costs the visitor their place. */
+/* -- Reset ---------------------------------------------------------------
+   It teleports the rover, so it is the one control a stray thumb must not
+   find. It is demoted by SIZE and DISTANCE, never by opacity: the old
+   opacity: 0.55 took its fill to 2.59:1 and its label to 2.18:1, so the
+   safeguard was making a destructive control fail contrast. Fading the thing
+   you least want misread is backwards. */
+
 .touch-reset {
-    top: 24px;
+    top: 28px;
     left: 24px;
+    bottom: auto;
+    right: auto;
     width: 52px;
     height: 52px;
-    opacity: 0.55;
+    font-size: 9px;
+    /* Same keyline alpha as every other control. Dimming it here would repeat
+       the mistake the note above describes, just in a different property. */
+    box-shadow: inset 0 0 0 1.5px var(--hud-keyline);
 }
 
-.touch-horn.active {
-    background-color: rgba(0, 0, 0, 0.72);
-    background-image: linear-gradient(rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.22));
-    border-color: rgba(255, 255, 255, 0.6);
+/* No hit slop. Everywhere else a near miss should count; here it must not. */
+.touch-reset::before {
+    inset: 0;
 }
 
-.touch-reset.active {
-    opacity: 1;
-    background-color: rgba(0, 0, 0, 0.72);
-    background-image: linear-gradient(rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.22));
+/* -- Portrait phone: the thumb-arc layout --------------------------------
+
+   Left thumb steers, right thumb drives, and nothing important sits where a
+   thumb travels between the two.
+
+   BRAKE is the largest target and the lowest, alone in the corner: the
+   cheapest press on the screen. That is deliberate fail-safe ordering - an
+   imprecise grab during a panic should land on "stop".
+
+   BOOST sits up and inward on the same arc, 110px from brake centre to centre
+   with 38px of clear paint between them. Separated by angle rather than by
+   distance, so the two are told apart by direction of travel and can be found
+   without looking.
+
+   HORN goes in the channel between the joystick halo and brake. That is where
+   a thumb sliding off the stick actually lands, so the control that costs
+   nothing when pressed by accident is the one parked there.
+
+   RESET is nowhere near any of it - see below.
+   ---------------------------------------------------------------------- */
+
+@media (max-width: 600px) and (orientation: portrait) {
+    .touch-controls {
+        /* The lowest BUTTON. The joystick is excluded from the lift. */
+        --rest: 48px;
+    }
+
+    /* 168px outer with 14px of halo padding leaves a 140px visible ring.
+       Controls.ts derives the throw from that ring and the knob, so these two
+       numbers can change freely without the stick's range going out of sync. */
+    .touch-joystick {
+        left: 8px;
+        bottom: 76px;
+        width: 152px;
+        height: 152px;
+    }
+
+    .touch-joystick-knob {
+        width: 48px;
+        height: 48px;
+    }
+
+    .touch-btn {
+        width: 68px;
+        height: 68px;
+    }
+
+    .touch-brake {
+        right: 18px;
+        bottom: 48px;
+        width: 76px;
+        height: 76px;
+        font-size: 11px;
+    }
+
+    .touch-boost {
+        right: 100px;
+        bottom: 130px;
+    }
+
+    /* Anchored to the right edge, so on a narrow phone it walks towards the
+       joystick. 138px keeps a real gap at 360px, the commonest Android width. */
+    .touch-horn {
+        right: 138px;
+        bottom: 48px;
+        width: 52px;
+        height: 52px;
+        font-size: 9px;
+    }
+
+    .touch-horn::before {
+        inset: -6px;
+    }
+
+    /* Right-hand gutter, below the section sheet's furthest possible extent.
+       38vh mirrors .section-overlay's max-height at this breakpoint, so the
+       two cannot overlap however long a section runs - change one, change the
+       other. It lands ~200px above boost, up an edge no thumb travels while
+       driving. `bottom`/`left` are reset explicitly rather than relying on
+       nothing else having set them. */
+    .touch-reset {
+        top: calc(38vh + 28px);
+        right: 18px;
+        bottom: auto;
+        left: auto;
+        width: 48px;
+        height: 48px;
+        font-size: 9px;
+    }
+}
+
+
+/* -- Narrow phones -------------------------------------------------------
+
+   360px is the commonest Android viewport and 320px is still around (iPhone
+   SE 1st gen, a Fold's cover screen, and anything with Display Zoom turned
+   on). At those widths the full-size cluster does not fit: the joystick's
+   152px halo reaches x=160, which leaves under 160px for three buttons, and
+   boost and horn end up inside the ring's catch area where the joystick wins
+   the touch.
+
+   Everything shrinks together rather than one control moving, so the arc the
+   thumb learns is the same shape, just smaller. */
+
+@media (max-width: 380px) and (orientation: portrait) {
+    .touch-joystick {
+        width: 136px;
+        height: 136px;
+    }
+
+    .touch-joystick-knob {
+        width: 44px;
+        height: 44px;
+    }
+
+    .touch-btn {
+        width: 60px;
+        height: 60px;
+    }
+
+    .touch-brake {
+        right: 16px;
+        width: 68px;
+        height: 68px;
+    }
+
+    .touch-boost {
+        right: 88px;
+        bottom: 122px;
+    }
+
+    .touch-horn {
+        right: 124px;
+        width: 48px;
+        height: 48px;
+    }
 }
 
 /* ── Responsive: smaller controls on small screens ─────────────────── */
 
 @media (max-height: 500px) {
+    .touch-controls {
+        --rest: 26px;
+    }
+
+    /* 140px outer, 14px halo, 112px visible ring. Sat at bottom: 26px it was
+       under the credits and had to be lifted 31px against a 38px throw - see
+       the note on the lift. Parked above them instead. */
     .touch-joystick {
-        width: 90px;
-        height: 90px;
-        bottom: 20px;
-        left: 20px;
+        width: 140px;
+        height: 140px;
+        bottom: 62px;
+        left: 4px;
     }
     .touch-joystick-knob {
-        width: 36px;
-        height: 36px;
+        width: 42px;
+        height: 42px;
     }
     .touch-btn {
-        width: 52px;
-        height: 52px;
-        font-size: 8px;
+        width: 60px;
+        height: 60px;
+        font-size: 9px;
     }
+    /* Stacked on the right edge rather than fanned inward: held in landscape
+       the right thumb sweeps up and down the edge it comes over, not across
+       the screen. 82px apart, 20px of clear paint. */
     .touch-brake {
-        bottom: 20px;
-        right: 20px;
+        bottom: 26px;
+        right: 18px;
+        width: 64px;
+        height: 64px;
     }
     .touch-boost {
-        bottom: 88px;
-        right: 20px;
+        bottom: 124px;
+        right: 18px;
     }
     .touch-horn {
-        bottom: 20px;
-        right: 88px;
+        bottom: 26px;
+        right: 112px;
+        width: 50px;
+        height: 50px;
+        font-size: 9px;
     }
+    .touch-horn::before {
+        inset: -6px;
+    }
+    /* Top-left corner: the landscape sheet is centred and the left thumb never
+       goes there while steering. */
     .touch-reset {
-        top: 16px;
-        left: 16px;
-        width: 44px;
-        height: 44px;
+        top: 14px;
+        left: 14px;
+        bottom: auto;
+        right: auto;
+        width: 46px;
+        height: 46px;
+        font-size: 9px;
     }
     /* Landscape keeps the side card — there is width to spare — but 80vh of a
        390px-tall screen is nearly all of it */
@@ -792,9 +1128,17 @@ html:not(.has-js) .skip-link {
         transform: translateX(32%);
     }
 
+    /* No press-scale and no travel. The lift still HAPPENS - the controls
+       still get out of the credits' way - it just arrives as a switch rather
+       than a glide, which is what this setting asks for. */
     .touch-btn,
     .touch-btn.active {
         transform: none;
+    }
+
+    .touch-joystick,
+    .touch-btn {
+        transition: none;
     }
 
     /* The credits still appear and step aside — it just happens as a switch
@@ -901,4 +1245,183 @@ html:not(.has-js) .skip-link {
     font-size: 0.85rem;
     line-height: 1.5;
     opacity: 0.75;
+}
+
+
+/* -- Landscape: keep the section sheet off the driving controls ----------
+
+   Not part of the control layout, but broken by the same bottom-corner
+   geometry. In landscape the panel was a 300px card pinned to `right: 24px`
+   and vertically centred, which at 844x390 spans x 520-820 - directly on top
+   of boost and clipping brake. With a section open, the two controls you steer
+   with were underneath it and unreachable.
+
+   Re-anchored as a centred top sheet between the two control wings: the
+   joystick halo ends at x=152 and the horn begins at x=690, so a 168px gutter
+   on each side clears both by a comfortable margin at every landscape width
+   down to 568px.
+
+   Gated on four things, and each one is load-bearing. `pointer: coarse` keeps
+   it away from short desktop windows, which have no touch controls to avoid.
+   `orientation: landscape` and `min-width: 601px` keep it away from a phone in
+   portrait split-screen - a 412x430 pane matches `max-height: 500px` too, and
+   a 168/180px gutter either side of 412px leaves a 64px-wide sliver of panel.
+
+   Placed after the reduced-motion block on purpose: `.section-overlay` there
+   sets `right: 24px` at equal specificity, so an earlier rule would silently
+   lose. For the same reason `.visible` restates `right` - the base
+   `.section-overlay.visible` is two classes and outranks a single one. */
+
+@media (max-height: 500px) and (orientation: landscape) and (min-width: 601px) and (pointer: coarse) {
+    .section-overlay {
+        top: -100%;
+        bottom: auto;
+        left: 168px;
+        right: 180px;
+        width: auto;
+        max-height: 72vh;
+        transform: none;
+        border-width: 0 0 1px 0;
+        border-radius: 0 0 14px 14px;
+        padding: 14px 18px;
+        transition: top 0.45s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0.45s;
+    }
+
+    .section-overlay.visible {
+        top: 0;
+        right: 180px;
+    }
+}
+
+/* The sheet still has to arrive, it just does not travel to get there. */
+@media (max-height: 500px) and (orientation: landscape) and (min-width: 601px) and (pointer: coarse) and (prefers-reduced-motion: reduce) {
+    .section-overlay {
+        top: 0;
+        opacity: 0;
+        transition: opacity 0.25s ease, visibility 0s 0.25s;
+    }
+
+    .section-overlay.visible {
+        top: 0;
+        right: 180px;
+        opacity: 1;
+        transition-delay: 0s;
+    }
+}
+
+
+/* -- Tablets: the same collision, a different shape of screen --------------
+
+   A tablet has a coarse pointer but is neither narrow enough for the phone
+   breakpoint nor short enough for the landscape one, so it kept the original
+   centred side card - which sits in the right-hand column the boost and brake
+   buttons occupy. With a section open, the two controls you drive with were
+   underneath it.
+
+   There is width to spare here, so the card stays a card. It is top-anchored
+   instead of centred and stops short of the bottom, which is the smallest
+   change that clears the cluster: boost rests at 136px with a 72px button and
+   can lift another ~13px, so 280px of reserved bottom edge leaves a real
+   margin. */
+
+@media (pointer: coarse) and (min-width: 601px) and (min-height: 501px) {
+    .section-overlay {
+        top: 24px;
+        transform: none;
+        max-height: calc(100vh - 280px);
+    }
+}
+
+
+/* -- Small landscape phones: keep the full-width sheet --------------------
+
+   A landscape phone under 601px wide matches two blocks at once: the narrow
+   one, which makes the panel a full-width top sheet (`left: 0; right: 0;
+   width: auto`), and the short one, which narrows it to a 300px side card.
+   The short block is later in the file, so `width: 300px` wins - and with
+   `left` and `right` both still 0 the box is over-constrained, CSS drops
+   `right`, and a 300px card lands against the LEFT edge, directly on top of
+   the joystick.
+
+   At 480-600px there is no room for a side card beside the controls anyway,
+   so the top sheet is the right layout here. This only restores it.
+
+   Placed last so it beats both, and `.visible` restates `right` because the
+   base `.section-overlay.visible` is two classes and outranks one. */
+
+@media (max-width: 600px) and (max-height: 500px) {
+    .section-overlay {
+        left: 0;
+        /* Stops short of the right corner so RESET keeps somewhere to live -
+           at this size there is no other free edge. */
+        right: 76px;
+        width: auto;
+        /* 38vh, not 60vh: on a 320px-tall screen 60vh is 192px and reaches the
+           joystick. 38vh is 122px, which clears every driving control. The
+           panel scrolls, so the limit costs reading room, not content. */
+        max-height: 38vh;
+    }
+
+    .section-overlay.visible {
+        right: 76px;
+    }
+
+    /* Into the corner the sheet leaves free */
+    .touch-reset {
+        top: 14px;
+        right: 14px;
+        left: auto;
+        bottom: auto;
+    }
+}
+
+/* -- Very short landscape (320px tall and similar) -----------------------
+
+   An iPhone SE in landscape is 568x320. The standard landscape joystick is
+   140px on a 62px stand-off, which reaches 258px up a 320px screen and leaves
+   the section sheet nowhere to go. Everything comes down a size.
+
+   The halo padding shrinks with it: the throw is (ring - knob) / 2, so
+   keeping 14px of padding on a 116px element would leave a 30px ring and a
+   throw too short to steer with. */
+
+@media (max-height: 380px) and (orientation: landscape) {
+    .touch-joystick {
+        width: 116px;
+        height: 116px;
+        bottom: 52px;
+        padding: 10px;
+    }
+
+    .touch-joystick-knob {
+        width: 36px;
+        height: 36px;
+    }
+
+    .touch-btn {
+        width: 54px;
+        height: 54px;
+        font-size: 8px;
+    }
+
+    .touch-brake {
+        width: 58px;
+        height: 58px;
+        bottom: 22px;
+    }
+
+    .touch-boost {
+        bottom: 96px;
+    }
+
+    .touch-horn {
+        width: 46px;
+        height: 46px;
+        right: 98px;
+        bottom: 22px;
+    }
+
+    .touch-controls {
+        --rest: 22px;
+    }
 }
