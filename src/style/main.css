@@ -153,7 +153,24 @@ html:not(.has-js) .skip-link {
     left: 50%;
     transform: translateX(-50%);
     z-index: 5;
-    max-width: min(90vw, 640px);
+
+    /* One width for both states, so they cannot drift apart. */
+    --credits-width: min(90vw, 640px);
+
+    /* `width: max-content` is not cosmetic - without it this line wraps to
+       roughly twice the height of the same text when it is brought back later.
+
+       An absolutely positioned box with `left` set, `right: auto` and `width:
+       auto` is shrink-to-fit, and the width available to shrink into is the
+       containing block MINUS the used `left`. With `left: 50%` that is 50vw,
+       not the 90vw the max-width suggests - the `translateX(-50%)` below only
+       re-centres the result, it cannot hand the layout back the width it was
+       never offered. On a 390px phone the line was laying out into 195px.
+
+       The retired-and-restored copy sets `width: max-content` and so never
+       runs shrink-to-fit at all, which is exactly why it looked shorter. */
+    width: max-content;
+    max-width: var(--credits-width);
     text-align: center;
     pointer-events: none;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -236,8 +253,10 @@ html:not(.has-js) .skip-link {
     left: 50%;
     transform: translateX(-50%);
     margin-bottom: 8px;
+    /* Same two declarations as `.credits` above, and for the same reason -
+       this is the state that was always getting it right. */
     width: max-content;
-    max-width: min(90vw, 640px);
+    max-width: var(--credits-width);
     opacity: 0;
 }
 
@@ -571,7 +590,9 @@ html:not(.has-js) .skip-link {
      * belongs to the controls, so the credits now take the width they need and
      * the controls lift over them via `--credits-clearance`. */
     .credits {
-        max-width: min(92vw, 640px);
+        /* Width comes from `--credits-width` on the base rule, which both
+           states now share. This used to set 92vw while the restored copy used
+           90vw - a second, smaller way for the two to disagree. */
         font-size: 0.6rem;
         line-height: 1.4;
     }
