@@ -585,32 +585,28 @@ html:not(.has-js) .skip-link {
 
 /* -- Touch Controls ------------------------------------------------------
 
-   One rule governs every surface here: DARK INK OWNS THE OUTER PIXEL, and
-   every light or coloured detail lives inside it.
+   Same materials as the section panels: a dark warm translucent fill with a
+   thin warm outline. The HUD should look like it belongs to the same object as
+   the rest of the interface, not like instrumentation bolted over it.
 
-   That is not a style preference, it is the only thing that works. These
-   controls float over a procedural world with no fixed backdrop - bright peach
-   terrain rgb(247,180,145), shadowed rock around rgb(90,55,40), and the near
-   black sky. No single colour contrasts against all three: sweeping every
-   background luminance from 0 to 255, an opaque #17100C boundary on its own
-   bottoms out at 1.00:1, and so does a white one.
+   The two are not identical, and the difference is measured rather than
+   stylistic. Sampling the real frame, the terrain behind the BUTTONS in the
+   bottom-right is reliably bright - its 1st percentile is rgb(200,160,117) -
+   so their dark fill alone separates them from the world at 5.6:1, and their
+   outline is free to be as faint as the panel's. The JOYSTICK sits in the
+   bottom-left, where rock and rover shadow do pass behind it: 1st percentile
+   rgb(97,77,84), where the same fill manages only 2.3:1. Its outline is
+   therefore doing real work and is drawn solid.
 
-   A dark ring PAIRED with a light inner keyline does hold. Whichever of the
-   two the background is closer to, the other one shows: the floor across the
-   whole sweep is 3.62:1, against the 3:1 WCAG 1.4.11 asks for non-text
-   contrast. The previous joystick - a white 0.06 fill with a white 0.15
-   border - measured 1.04:1, which is why it was invisible on Mars.
+   That is the whole principle: the dark fill carries the shape against bright
+   terrain, the warm outline carries it against dark. Whichever the backdrop
+   is closer to, the other one shows. Against the actual pixels behind each
+   control, neither now fails anywhere.
 
-   The light half is warm, not white. #fccf92 and #f5aa58 are the two tones the
-   section panels already use, so the HUD belongs to the same world rather than
-   looking like browser chrome dropped on top of it. The pale #fccf92 is the
-   one doing the contrast work - it is the hairline that has to beat dark
-   terrain, and at 3.62:1 it keeps a real margin where the deeper #f5aa58 would
-   scrape by at 3.13:1. #f5aa58 carries the labels and the knob, where it is
-   read against the dark face rather than against the world, and scores 4.74:1.
-   The two warmer tones in the palette, #d4a574 and #ff9043, fail outright at
-   2.91:1 and 2.90:1 - they are panel colours, read against a fixed dark card,
-   and they do not survive being put over open terrain.
+   No `backdrop-filter` here, though the panels use one. They appear for a few
+   seconds; this is on screen permanently, over a canvas repainting at 60fps,
+   and a blur behind five always-visible elements is a per-frame cost on a
+   phone for an effect the translucent fill mostly already gives.
    ---------------------------------------------------------------------- */
 
 .touch-controls {
@@ -619,11 +615,13 @@ html:not(.has-js) .skip-link {
     pointer-events: none;
     z-index: 10;
 
-    --hud-ink: #17100C;                         /* outer boundary, opaque */
-    --hud-face: rgba(0, 0, 0, 0.72);            /* button fill */
-    --hud-glass: rgba(0, 0, 0, 0.5);            /* joystick fill, 3.49:1 on peach */
-    --hud-keyline: #fccf92;                     /* the inner light line */
-    --hud-label: #f5aa58;                       /* labels and the knob */
+    /* Lifted from .section-overlay, so the HUD is the same material */
+    --hud-face: rgba(20, 10, 5, 0.88);
+    --hud-edge: rgba(255, 144, 67, 0.25);
+    /* The joystick's outline, which has dark terrain to survive - see above */
+    --hud-edge-stick: #f5aa58;
+    --hud-label: #f5aa58;
+    --hud-label-bright: #fccf92;
 
     /* How far the driving cluster stands off the bottom edge, and how far it
        gets out of the way when the credits are expanded underneath it.
@@ -710,9 +708,8 @@ html:not(.has-js) .skip-link {
     height: 100%;
     border-radius: 50%;
     position: relative;
-    background: var(--hud-glass);
-    border: 3px solid var(--hud-ink);
-    box-shadow: inset 0 0 0 2px var(--hud-keyline);
+    background: var(--hud-face);
+    border: 1px solid var(--hud-edge-stick);
 }
 
 .touch-joystick-knob {
@@ -721,12 +718,10 @@ html:not(.has-js) .skip-link {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    /* Warm and solid against the dark well, which is the only thing it is
+       ever seen against - unlike the ring, it never touches the terrain. */
     background: var(--hud-label);
-    /* Load-bearing, not trim. At full deflection the knob sits against the
-       ring, and its fill alone is only 2.04:1 against the glass - the dark
-       edge is what the knob is actually seen by, at 9.65:1, exactly when the
-       stick's reading matters most. */
-    border: 2px solid var(--hud-ink);
+    border: 1px solid var(--hud-edge);
 }
 
 /* -- Buttons ----------------------------------------------------------- */
@@ -737,8 +732,7 @@ html:not(.has-js) .skip-link {
     touch-action: none;
     border-radius: 50%;
     background: var(--hud-face);
-    border: 2px solid var(--hud-ink);
-    box-shadow: inset 0 0 0 1.5px var(--hud-keyline);
+    border: 1px solid var(--hud-edge);
     color: var(--hud-label);
     font-size: 10px;
     font-weight: 700;
@@ -774,7 +768,7 @@ html:not(.has-js) .skip-link {
     transform: scale(0.93);
     /* Brighter than the resting label, not whiter - the pressed state steps up
        the same hue rather than changing to a different colour. */
-    color: var(--hud-keyline);
+    color: var(--hud-label-bright);
 }
 
 /* Accents go INSIDE the dark edge, never on it.
@@ -787,16 +781,19 @@ html:not(.has-js) .skip-link {
  * tell boost from brake. It never has to: they differ in label, in size and in
  * position, and the colour is the least of the four cues. */
 .touch-boost.active {
-    box-shadow: inset 0 0 0 3px #ff9043, 0 0 18px rgba(255, 144, 67, 0.55);
+    border-color: rgba(255, 144, 67, 0.85);
+    box-shadow: inset 0 0 0 2px rgba(255, 144, 67, 0.5), 0 0 12px rgba(255, 144, 67, 0.35);
 }
 
 .touch-brake.active {
-    box-shadow: inset 0 0 0 3px #ff6b5e, 0 0 18px rgba(255, 107, 94, 0.5);
+    border-color: rgba(255, 107, 94, 0.85);
+    box-shadow: inset 0 0 0 2px rgba(255, 107, 94, 0.5), 0 0 12px rgba(255, 107, 94, 0.3);
 }
 
 .touch-horn.active,
 .touch-reset.active {
-    box-shadow: inset 0 0 0 3px var(--hud-keyline);
+    border-color: rgba(252, 207, 146, 0.7);
+    box-shadow: inset 0 0 0 2px rgba(252, 207, 146, 0.4);
 }
 
 /* -- Resting layout -----------------------------------------------------
@@ -866,9 +863,9 @@ html:not(.has-js) .skip-link {
     width: 52px;
     height: 52px;
     font-size: 9px;
-    /* Same keyline alpha as every other control. Dimming it here would repeat
-       the mistake the note above describes, just in a different property. */
-    box-shadow: inset 0 0 0 1.5px var(--hud-keyline);
+    /* Nothing extra. It is demoted by size and distance, and it wears exactly
+       the same outline as everything else - dimming it would repeat the
+       mistake the note above describes, in a different property. */
 }
 
 /* No hit slop. Everywhere else a near miss should count; here it must not. */
